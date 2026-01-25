@@ -1,5 +1,5 @@
 {
-  "name": "webapp",
+  "name": "rp-kanban-board",
   "type": "module",
   "scripts": {
     "dev": "vite",
