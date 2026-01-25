@@ -1,4 +1,4 @@
-# DB 엔지니어 칸반 시스템 (DB Engineer Kanban System)
+# RP Kanban Board
 
 ## 프로젝트 개요
 
@@ -334,7 +334,7 @@ webapp/
 
 ## 개발자 정보
 
-- **프로젝트명**: DB 엔지니어 칸반 시스템
+- **프로젝트명**: RP Kanban Board
 - **버전**: MVP 1.0.0
 - **최종 업데이트**: 2026-01-25
 - **라이선스**: MIT
