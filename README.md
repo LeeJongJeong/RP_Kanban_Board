@@ -56,9 +56,11 @@
    - 담당자 변경 이력
    - 변경 시간 및 변경자 기록
 
-### 팀 구성
-- **DS1T 팀**: 최영준, 이성인, 김태관, 김정환, 최용규, 김지은, 강홍용, 서원길, 김지현 (9명)
-- **DS2T 팀**: 임종민, 이소라, 한수현, 고재훈, 추건우, 엄혜진, 배재준, 박재원, 장희수 (9명)
+### 팀 구성 및 담당 DBMS
+- **DS1T 팀 (9명)**: PostgreSQL, EDB, MongoDB, SingleStore 담당
+  - 최영준, 이성인, 김태관, 김정환, 최용규, 김지은, 강홍용, 서원길, 김지현
+- **DS2T 팀 (9명)**: MySQL, MariaDB, Redis, HeatWave 담당
+  - 임종민, 이소라, 한수현, 고재훈, 추건우, 엄혜진, 배재준, 박재원, 장희수
 - **총 인원**: 18명 (WIP 제한: 각 3건)
 
 ## URL 및 엔드포인트
@@ -215,19 +217,37 @@
 
 ### 현재 시스템 상태
 
-**엔지니어**: 18명
-- DS1T 팀 (9명): 최영준, 이성인, 김태관, 김정환, 최용규, 김지은, 강홍용, 서원길, 김지현
-- DS2T 팀 (9명): 임종민, 이소라, 한수현, 고재훈, 추건우, 엄혜진, 배재준, 박재원, 장희수
+### 현재 시스템 상태
 
-**티켓**: 10건
-- To-Do: 4건 (PostgreSQL 슬로우 쿼리, MongoDB Sharding, MySQL 8.4 업그레이드, EDB 마이그레이션)
-- In-Progress: 3건 (MySQL Replication Lag [최영준], PostgreSQL Connection Pool [이소라], SingleStore 성능 분석 [강홍용])
-- Review: 2건 (MariaDB 헬스체크 [고재훈], Redis Sentinel 테스트 [추건우])
-- Done: 1건 (Redis Cluster 패치 [김지은])
+**팀 구성**:
+- DS1T 팀 (9명): PostgreSQL, EDB, MongoDB, SingleStore 담당
+  - 최영준, 이성인, 김태관, 김정환, 최용규, 김지은, 강홍용, 서원길, 김지현
+- DS2T 팀 (9명): MySQL, MariaDB, Redis, HeatWave 담당
+  - 임종민, 이소라, 한수현, 고재훈, 추건우, 엄혜진, 배재준, 박재원, 장희수
 
-**작업 부하 분산**:
-- 현재 작업 중: 9명 (각 1건씩 할당, WIP 사용률 33%)
-- 여유 리소스: 9명 (신규 티켓 할당 가능)
+**티켓**: 16건 (팀별 DBMS 매핑 완료)
+- **DS1T 담당 (9건)**:
+  - PostgreSQL: 3건 (슬로우 쿼리 튜닝 [최영준], Connection Pool 최적화 [이성인], HA 구성 [김지은])
+  - EDB: 2건 (마이그레이션 [김태관], Failover Manager [김정환])
+  - MongoDB: 2건 (Sharding 설계 [최용규], Atlas Search 최적화 [강홍용])
+  - SingleStore: 2건 (클러스터 성능 분석 [서원길], Columnstore 압축 [김지현])
+
+- **DS2T 담당 (7건)**:
+  - MySQL: 2건 (Replication Lag [임종민], 8.4 업그레이드 [이소라])
+  - MariaDB: 2건 (헬스체크 [고재훈], MaxScale 구성 [박재원])
+  - Redis: 2건 (Cluster 패치 [추건우], Sentinel 테스트 [엄혜진])
+  - HeatWave: 1건 (Parallel Load 최적화 [배재준])
+
+**상태별 분포**:
+- In-Progress: 4건 (DS1T 2건 + DS2T 2건)
+- Review: 4건 (DS1T 2건 + DS2T 2건)
+- Todo: 7건 (DS1T 5건 + DS2T 2건)
+- Done: 1건 (DS2T 1건)
+
+**작업 부하**:
+- DS1T: 9건 / 27건 가능 (33% 사용률)
+- DS2T: 6건 / 27건 가능 (22% 사용률)
+- 전체: 15건 / 54건 가능 (28% 사용률)
 
 ### 로컬 개발 환경 실행
 
