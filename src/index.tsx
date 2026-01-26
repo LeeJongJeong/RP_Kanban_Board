@@ -575,18 +575,19 @@ app.get('/', (c) => {
             </div>
 
             <!-- 대시보드 모달 -->
-            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) toggleDashboard()">
-                <div class="bg-white rounded-lg shadow-2xl w-full max-w-6xl my-8 flex flex-col max-h-[70vh]" onclick="event.stopPropagation()">
+            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-end sm:items-center justify-center overflow-y-auto" onclick="if(event.target === this) toggleDashboard()">
+                <div class="bg-white rounded-t-2xl sm:rounded-lg shadow-2xl w-full max-w-6xl flex flex-col max-h-[85vh] sm:max-h-[75vh] sm:my-8 relative" onclick="event.stopPropagation()">
+                    <!-- 닫기 버튼 (절대 위치 - 항상 보임) -->
+                    <button onclick="toggleDashboard()" class="absolute top-4 right-4 z-50 text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors w-12 h-12 flex items-center justify-center rounded-full shadow-xl hover:shadow-2xl" title="닫기">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
                     <!-- 헤더 -->
-                    <div class="flex justify-between items-center gap-4 px-4 py-5 sm:px-6 sm:py-6 border-b bg-gradient-to-r from-blue-50 to-white rounded-t-lg">
-                        <h2 class="text-lg sm:text-2xl font-bold text-gray-800 flex items-center">
-                            <i class="fas fa-chart-line text-blue-600 mr-2"></i>
+                    <div class="flex items-center gap-4 px-4 py-6 sm:px-6 border-b bg-gradient-to-r from-blue-50 to-white rounded-t-2xl sm:rounded-t-lg">
+                        <i class="fas fa-chart-line text-blue-600 text-2xl"></i>
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
                             <span class="hidden sm:inline">운영 대시보드</span>
                             <span class="sm:hidden">대시보드</span>
                         </h2>
-                        <button onclick="toggleDashboard()" class="flex-shrink-0 text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors px-4 py-4 rounded-full shadow-lg hover:shadow-xl" title="닫기">
-                            <i class="fas fa-times text-2xl"></i>
-                        </button>
                     </div>
                     <!-- 스크롤 가능한 컨텐츠 -->
                     <div class="overflow-y-auto flex-1 p-4 sm:p-6">
