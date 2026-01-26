@@ -529,7 +529,7 @@ app.get('/', (c) => {
             </div>
 
             <!-- 대시보드 모달 -->
-            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
                 <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-6xl max-h-[90vh] overflow-y-auto">
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-6">
@@ -647,7 +647,7 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 상세 모달 -->
-            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
                 <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
                     <div class="p-6">
                         <div class="flex justify-between items-start mb-6">
