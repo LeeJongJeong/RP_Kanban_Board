@@ -772,14 +772,19 @@ async function toggleDashboard() {
         
         <!-- SLA 위험 경고 -->
         ${stats.sla_at_risk.count > 0 ? `
-          <div class="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div class="flex items-center space-x-2 text-red-700">
-              <i class="fas fa-exclamation-triangle text-2xl"></i>
-              <div>
-                <p class="font-bold">SLA 위험 경고</p>
-                <p class="text-sm">현재 <strong>${stats.sla_at_risk.count}건</strong>의 티켓이 SLA 초과 위험에 있습니다.</p>
+          <div class="mt-6 bg-red-50 border border-red-200 rounded-lg p-4 cursor-pointer hover:bg-red-100 transition"
+               onclick="showSlaRiskDetails(${JSON.stringify(stats.sla_at_risk).replace(/"/g, '&quot;')})">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2 text-red-700">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+                <div>
+                  <p class="font-bold">SLA 위험 경고</p>
+                  <p class="text-sm">현재 <strong>${stats.sla_at_risk.count}건</strong>의 티켓이 SLA 초과 위험에 있습니다.</p>
+                </div>
               </div>
+              <i class="fas fa-chevron-right text-red-700"></i>
             </div>
+            <p class="text-xs text-red-600 mt-2">클릭하여 상세 정보 보기</p>
           </div>
         ` : ''}
       `;
@@ -790,6 +795,105 @@ async function toggleDashboard() {
   } else {
     modal.classList.add('hidden');
   }
+}
+
+// ==================== SLA Risk Details Modal ====================
+function showSlaRiskDetails(slaData) {
+  const modal = document.getElementById('slaRiskModal');
+  const content = document.getElementById('slaRiskContent');
+  
+  if (!modal || !content) return;
+  
+  modal.classList.remove('hidden');
+  
+  const tickets = slaData.tickets || [];
+  
+  if (tickets.length === 0) {
+    content.innerHTML = '<p class="text-gray-500 text-center py-8">위험 티켓이 없습니다.</p>';
+    return;
+  }
+  
+  content.innerHTML = `
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+      <p class="text-sm text-yellow-800">
+        <i class="fas fa-info-circle mr-2"></i>
+        SLA 위험 티켓은 목표 시간의 80% 이상 경과했거나 이미 초과한 긴급 티켓입니다.
+      </p>
+    </div>
+    
+    <div class="space-y-4">
+      ${tickets.map(ticket => {
+        const remainingMinutes = ticket.sla_minutes - ticket.elapsed_minutes;
+        const isOverdue = remainingMinutes <= 0;
+        const percentage = Math.min((ticket.elapsed_minutes / ticket.sla_minutes) * 100, 100);
+        
+        return `
+          <div class="border border-red-300 rounded-lg p-4 bg-white hover:shadow-md transition cursor-pointer"
+               onclick="openTicketDetail(${ticket.id})">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2 mb-2">
+                  <span class="severity-${ticket.severity} text-xs font-semibold px-2 py-1 rounded">
+                    ${ticket.severity.toUpperCase()}
+                  </span>
+                  <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+                    ${ticket.dbms_type}
+                  </span>
+                  <span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
+                    ${STATUS_LABELS[ticket.status]}
+                  </span>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-2">#${ticket.id} ${ticket.title}</h3>
+                <div class="flex items-center space-x-4 text-sm text-gray-600">
+                  <span>
+                    <i class="fas fa-user mr-1"></i>
+                    ${ticket.assigned_to_name || '미할당'}
+                  </span>
+                  <span>
+                    <i class="fas fa-clock mr-1"></i>
+                    경과: ${ticket.elapsed_minutes}분 / ${ticket.sla_minutes}분
+                  </span>
+                </div>
+              </div>
+              <div class="text-right">
+                ${isOverdue ? `
+                  <div class="text-red-600 font-bold text-lg">
+                    <i class="fas fa-exclamation-circle"></i> 초과
+                  </div>
+                  <div class="text-red-600 text-sm">
+                    ${Math.abs(remainingMinutes)}분 초과
+                  </div>
+                ` : `
+                  <div class="text-orange-600 font-bold text-lg">
+                    ${remainingMinutes}분
+                  </div>
+                  <div class="text-orange-600 text-sm">남음</div>
+                `}
+              </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div class="${isOverdue ? 'bg-red-600' : percentage >= 90 ? 'bg-red-500' : 'bg-orange-500'} h-3 rounded-full transition-all"
+                   style="width: ${percentage}%"></div>
+            </div>
+            <div class="text-xs text-gray-500 text-right mt-1">${percentage.toFixed(0)}% 경과</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    
+    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+      <p class="text-sm text-gray-700">
+        <strong>총 ${tickets.length}건</strong>의 티켓이 SLA 위험 상태입니다. 
+        각 티켓을 클릭하면 상세 정보를 확인할 수 있습니다.
+      </p>
+    </div>
+  `;
+}
+
+function closeSlaRiskModal() {
+  document.getElementById('slaRiskModal').classList.add('hidden');
 }
 
 // ==================== Notifications ====================
@@ -831,3 +935,5 @@ window.showWeekPicker = showWeekPicker;
 window.closeWeekPicker = closeWeekPicker;
 window.changeWeek = changeWeek;
 window.applyCustomWeek = applyCustomWeek;
+window.showSlaRiskDetails = showSlaRiskDetails;
+window.closeSlaRiskModal = closeSlaRiskModal;

@@ -367,22 +367,39 @@ app.get('/api/dashboard/stats', async (c) => {
     ORDER BY current_wip DESC
   `).all()
   
-  // SLA 위반 위험 티켓 (긴급)
-  const slaAtRisk = await DB.prepare(`
-    SELECT COUNT(*) as count
-    FROM tickets
+  // SLA 위반 위험 티켓 (긴급) - 상세 정보 포함
+  const slaAtRiskTickets = await DB.prepare(`
+    SELECT 
+      t.id,
+      t.title,
+      t.status,
+      t.severity,
+      t.dbms_type,
+      t.sla_minutes,
+      t.started_at,
+      t.created_at,
+      e.name as assigned_to_name,
+      CAST((julianday('now') - julianday(COALESCE(t.started_at, t.created_at))) * 24 * 60 AS INTEGER) as elapsed_minutes
+    FROM tickets t
+    LEFT JOIN engineers e ON t.assigned_to = e.id
     WHERE 
-      status IN ('todo', 'in_progress') 
-      AND sla_minutes IS NOT NULL
-      AND severity IN ('critical', 'high')
+      t.status IN ('todo', 'in_progress') 
+      AND t.sla_minutes IS NOT NULL
+      AND t.severity IN ('critical', 'high')
       AND (
-        (started_at IS NOT NULL AND 
-         (julianday('now') - julianday(started_at)) * 24 * 60 > sla_minutes * 0.8)
+        (t.started_at IS NOT NULL AND 
+         (julianday('now') - julianday(t.started_at)) * 24 * 60 > t.sla_minutes * 0.8)
         OR
-        (started_at IS NULL AND 
-         (julianday('now') - julianday(created_at)) * 24 * 60 > sla_minutes * 0.5)
+        (t.started_at IS NULL AND 
+         (julianday('now') - julianday(t.created_at)) * 24 * 60 > t.sla_minutes * 0.5)
       )
-  `).first()
+    ORDER BY t.severity DESC, elapsed_minutes DESC
+  `).all()
+  
+  const slaAtRisk = {
+    count: slaAtRiskTickets.results.length,
+    tickets: slaAtRiskTickets.results
+  }
   
   return c.json({
     status_counts: statusCounts.results,
@@ -640,6 +657,24 @@ app.get('/', (c) => {
                             </button>
                         </div>
                         <div id="ticketDetailContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLA 위험 티켓 목록 모달 -->
+            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-exclamation-triangle text-3xl text-red-600"></i>
+                                <h2 class="text-2xl font-bold text-gray-800">SLA 위험 티켓 목록</h2>
+                            </div>
+                            <button onclick="closeSlaRiskModal()" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                        <div id="slaRiskContent"></div>
                     </div>
                 </div>
             </div>
