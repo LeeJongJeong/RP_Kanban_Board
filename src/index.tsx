@@ -475,12 +475,21 @@ app.get('/', (c) => {
         <div id="app">
             <!-- 헤더 -->
             <header class="bg-white shadow-sm border-b sticky top-0 z-50">
-                <div class="container mx-auto px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <i class="fas fa-database text-blue-600 text-2xl"></i>
-                            <h1 class="text-2xl font-bold text-gray-800">RP Kanban Board</h1>
+                <div class="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
+                    <!-- 타이틀 -->
+                    <div class="flex items-center justify-between mb-3 sm:mb-0">
+                        <div class="flex items-center space-x-2 sm:space-x-3">
+                            <i class="fas fa-database text-blue-600 text-xl sm:text-2xl"></i>
+                            <h1 class="text-lg sm:text-2xl font-bold text-gray-800">RP Kanban Board</h1>
                         </div>
+                        <!-- 모바일 메뉴 토글 -->
+                        <button onclick="toggleMobileMenu()" class="sm:hidden text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 데스크톱 메뉴 -->
+                    <div class="hidden sm:flex items-center justify-between mt-3">
                         <div class="flex items-center space-x-4">
                             <!-- 주차 선택 -->
                             <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
@@ -497,6 +506,8 @@ app.get('/', (c) => {
                                 <i class="fas fa-plus"></i>
                                 <span>새 티켓</span>
                             </button>
+                        </div>
+                        <div class="flex items-center space-x-4">
                             <select id="viewMode" onchange="changeView()" class="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="status">상태별 보기</option>
                                 <option value="engineer">엔지니어별 보기</option>
@@ -508,12 +519,43 @@ app.get('/', (c) => {
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- 모바일 메뉴 -->
+                    <div id="mobileMenu" class="hidden sm:hidden mt-3 space-y-2">
+                        <!-- 주차 선택 -->
+                        <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
+                            <i class="fas fa-calendar-week text-gray-600 text-sm"></i>
+                            <select id="weekSelectorMobile" onchange="changeWeek()" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer text-sm font-medium text-gray-700 flex-1">
+                                <option value="current">이번 주</option>
+                            </select>
+                            <button onclick="showWeekPicker()" class="text-blue-600 hover:text-blue-700">
+                                <i class="fas fa-calendar-alt text-sm"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="openNewTicketModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg flex items-center justify-center space-x-2 transition text-sm">
+                                <i class="fas fa-plus"></i>
+                                <span>새 티켓</span>
+                            </button>
+                            <button onclick="toggleDashboard()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg flex items-center justify-center space-x-2 transition text-sm">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>대시보드</span>
+                            </button>
+                        </div>
+                        
+                        <select id="viewModeMobile" onchange="changeView()" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            <option value="status">상태별 보기</option>
+                            <option value="engineer">엔지니어별 보기</option>
+                            <option value="dbms">DBMS별 보기</option>
+                        </select>
+                    </div>
                 </div>
             </header>
 
             <!-- 주차 선택 모달 -->
-            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-xl w-96 p-6">
+            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6">
                     <h3 class="text-xl font-bold mb-4">주차 선택</h3>
                     <div class="space-y-4">
                         <div>
@@ -529,8 +571,8 @@ app.get('/', (c) => {
             </div>
 
             <!-- 대시보드 모달 -->
-            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-2 sm:p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-2xl font-bold text-gray-800">
@@ -549,10 +591,10 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 생성 모달 -->
-            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6">
-                        <h2 class="text-2xl font-bold mb-4">새 티켓 생성</h2>
+            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+                    <div class="p-4 sm:p-6">
+                        <h2 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">새 티켓 생성</h2>
                         <form id="newTicketForm" class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">제목 *</label>
@@ -562,7 +604,7 @@ app.get('/', (c) => {
                                 <label class="block text-sm font-medium mb-1">설명</label>
                                 <textarea name="description" rows="3" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">DBMS 유형 *</label>
                                     <select name="dbms_type" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -587,7 +629,7 @@ app.get('/', (c) => {
                                     </select>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">심각도 *</label>
                                     <select name="severity" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -607,7 +649,7 @@ app.get('/', (c) => {
                                     </select>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">호스트 IP</label>
                                     <input type="text" name="instance_host" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -625,7 +667,7 @@ app.get('/', (c) => {
                                     <input type="text" name="instance_version" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium mb-1">SLA (분)</label>
                                     <input type="number" name="sla_minutes" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -647,11 +689,11 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 상세 모달 -->
-            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-6">
-                            <h2 class="text-2xl font-bold text-gray-800" id="detailTitle"></h2>
+            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-2 sm:p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+                    <div class="p-4 sm:p-6">
+                        <div class="flex justify-between items-start mb-4 sm:mb-6">
+                            <h2 class="text-xl sm:text-2xl font-bold text-gray-800" id="detailTitle"></h2>
                             <button onclick="closeTicketDetailModal()" class="text-gray-500 hover:text-gray-700">
                                 <i class="fas fa-times text-2xl"></i>
                             </button>
@@ -662,13 +704,13 @@ app.get('/', (c) => {
             </div>
 
             <!-- SLA 위험 티켓 목록 모달 -->
-            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-6">
-                            <div class="flex items-center space-x-3">
-                                <i class="fas fa-exclamation-triangle text-3xl text-red-600"></i>
-                                <h2 class="text-2xl font-bold text-gray-800">SLA 위험 티켓 목록</h2>
+            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+                    <div class="p-4 sm:p-6">
+                        <div class="flex justify-between items-start mb-4 sm:mb-6">
+                            <div class="flex items-center space-x-2 sm:space-x-3">
+                                <i class="fas fa-exclamation-triangle text-2xl sm:text-3xl text-red-600"></i>
+                                <h2 class="text-xl sm:text-2xl font-bold text-gray-800">SLA 위험 티켓 목록</h2>
                             </div>
                             <button onclick="closeSlaRiskModal()" class="text-gray-500 hover:text-gray-700">
                                 <i class="fas fa-times text-2xl"></i>
@@ -680,9 +722,9 @@ app.get('/', (c) => {
             </div>
 
             <!-- 메인 칸반 보드 -->
-            <main class="container mx-auto px-6 py-8">
-                <div id="kanbanBoard" class="grid grid-cols-4 gap-6">
-                    <div class="spinner col-span-4 mx-auto"></div>
+            <main class="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
+                <div id="kanbanBoard">
+                    <div class="spinner mx-auto"></div>
                 </div>
             </main>
         </div>

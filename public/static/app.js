@@ -75,6 +75,7 @@ function getYearWeek(date) {
 
 function updateWeekSelector() {
   const selector = document.getElementById('weekSelector');
+  const selectorMobile = document.getElementById('weekSelectorMobile');
   if (!selector) return;
   
   // 현재 옵션들 저장
@@ -108,25 +109,47 @@ function updateWeekSelector() {
     });
   }
   
-  // 셀렉터 업데이트
-  selector.innerHTML = options.map(opt => 
+  // 옵션 HTML 생성
+  const optionsHtml = options.map(opt => 
     `<option value="${opt.value}" data-start="${opt.startDate}" data-end="${opt.endDate}">${opt.label}</option>`
   ).join('');
+  
+  // 데스크톱 셀렉터 업데이트
+  selector.innerHTML = optionsHtml;
+  
+  // 모바일 셀렉터 업데이트
+  if (selectorMobile) {
+    selectorMobile.innerHTML = optionsHtml;
+  }
   
   // 기존 값 복원 또는 이번 주 선택
   if (currentValue && selector.querySelector(`option[value="${currentValue}"]`)) {
     selector.value = currentValue;
+    if (selectorMobile) selectorMobile.value = currentValue;
   } else {
     selector.value = options[0].value;
+    if (selectorMobile) selectorMobile.value = options[0].value;
   }
 }
 
 function changeWeek() {
-  const selector = document.getElementById('weekSelector');
+  // 데스크톱과 모바일 셀렉터 모두 확인
+  const selector = document.getElementById('weekSelector') || document.getElementById('weekSelectorMobile');
+  if (!selector) return;
+  
   const selectedOption = selector.options[selector.selectedIndex];
   
   currentWeekStart = selectedOption.dataset.start;
   currentWeekEnd = selectedOption.dataset.end;
+  
+  // 다른 셀렉터도 동기화
+  const otherSelector = selector.id === 'weekSelector' 
+    ? document.getElementById('weekSelectorMobile')
+    : document.getElementById('weekSelector');
+  
+  if (otherSelector) {
+    otherSelector.value = selector.value;
+  }
   
   loadTickets();
 }
@@ -254,82 +277,97 @@ function renderKanbanBoard() {
 function renderStatusView(board) {
   const statuses = ['todo', 'in_progress', 'review', 'done'];
   
-  board.innerHTML = statuses.map(status => {
-    const tickets = allTickets.filter(t => t.status === status);
-    return `
-      <div class="kanban-column bg-white rounded-lg shadow-sm p-4" 
-           data-status="${status}"
-           ondrop="handleDrop(event, '${status}')"
-           ondragover="handleDragOver(event)"
-           ondragleave="handleDragLeave(event)">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-bold text-lg text-gray-700">
-            ${STATUS_LABELS[status]}
-          </h3>
-          <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-sm font-semibold">
-            ${tickets.length}
-          </span>
-        </div>
-        <div class="space-y-3">
-          ${tickets.map(ticket => renderTicketCard(ticket)).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
+  // 모바일: 가로 스크롤 가능한 flex 레이아웃
+  // 데스크톱: 그리드 레이아웃
+  board.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 min-w-min">
+      ${statuses.map(status => {
+        const tickets = allTickets.filter(t => t.status === status);
+        return `
+          <div class="kanban-column bg-white rounded-lg shadow-sm p-3 sm:p-4 min-w-[280px] sm:min-w-0" 
+               data-status="${status}"
+               ondrop="handleDrop(event, '${status}')"
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)">
+            <div class="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 class="font-bold text-base sm:text-lg text-gray-700">
+                ${STATUS_LABELS[status]}
+              </h3>
+              <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs sm:text-sm font-semibold">
+                ${tickets.length}
+              </span>
+            </div>
+            <div class="space-y-2 sm:space-y-3">
+              ${tickets.map(ticket => renderTicketCard(ticket)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 function renderEngineerView(board) {
-  board.innerHTML = allEngineers.map(engineer => {
-    const tickets = allTickets.filter(t => t.assigned_to === engineer.id && t.status !== 'done');
-    const wipPercentage = engineer.wip_limit > 0 ? (tickets.length / engineer.wip_limit * 100).toFixed(0) : 0;
-    const wipColor = wipPercentage >= 100 ? 'text-red-600' : wipPercentage >= 80 ? 'text-orange-600' : 'text-green-600';
-    
-    return `
-      <div class="kanban-column bg-white rounded-lg shadow-sm p-4"
-           data-engineer="${engineer.id}"
-           ondrop="handleEngineerDrop(event, ${engineer.id})"
-           ondragover="handleDragOver(event)"
-           ondragleave="handleDragLeave(event)">
-        <div class="mb-4">
-          <h3 class="font-bold text-lg text-gray-700">${engineer.name}</h3>
-          <p class="text-sm text-gray-500">${engineer.role}</p>
-          <div class="mt-2 flex items-center space-x-2">
-            <span class="${wipColor} font-semibold">${tickets.length} / ${engineer.wip_limit}</span>
-            <div class="flex-1 bg-gray-200 rounded-full h-2">
-              <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: ${Math.min(wipPercentage, 100)}%"></div>
+  // 모바일: 가로 스크롤, 데스크톱: 그리드
+  board.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      ${allEngineers.map(engineer => {
+        const tickets = allTickets.filter(t => t.assigned_to === engineer.id && t.status !== 'done');
+        const wipPercentage = engineer.wip_limit > 0 ? (tickets.length / engineer.wip_limit * 100).toFixed(0) : 0;
+        const wipColor = wipPercentage >= 100 ? 'text-red-600' : wipPercentage >= 80 ? 'text-orange-600' : 'text-green-600';
+        
+        return `
+          <div class="kanban-column bg-white rounded-lg shadow-sm p-3 sm:p-4 min-w-[280px] sm:min-w-0"
+               data-engineer="${engineer.id}"
+               ondrop="handleEngineerDrop(event, ${engineer.id})"
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)">
+            <div class="mb-3 sm:mb-4">
+              <h3 class="font-bold text-base sm:text-lg text-gray-700">${engineer.name}</h3>
+              <p class="text-xs sm:text-sm text-gray-500">${engineer.role}</p>
+              <div class="mt-2 flex items-center space-x-2">
+                <span class="${wipColor} font-semibold text-sm">${tickets.length} / ${engineer.wip_limit}</span>
+                <div class="flex-1 bg-gray-200 rounded-full h-2">
+                  <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: ${Math.min(wipPercentage, 100)}%"></div>
             </div>
           </div>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-2 sm:space-y-3">
           ${tickets.map(ticket => renderTicketCard(ticket)).join('')}
         </div>
       </div>
     `;
-  }).join('');
+  }).join('')}
+    </div>
+  `;
 }
 
 function renderDBMSView(board) {
   const dbmsTypes = [...new Set(allTickets.map(t => t.dbms_type))];
   
-  board.innerHTML = dbmsTypes.map(dbms => {
-    const tickets = allTickets.filter(t => t.dbms_type === dbms && t.status !== 'done');
-    return `
-      <div class="kanban-column bg-white rounded-lg shadow-sm p-4">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-bold text-lg text-gray-700 flex items-center space-x-2">
-            <i class="fas ${DBMS_ICONS[dbms] || 'fa-database'} text-blue-600"></i>
-            <span>${dbms}</span>
-          </h3>
-          <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-sm font-semibold">
-            ${tickets.length}
-          </span>
-        </div>
-        <div class="space-y-3">
-          ${tickets.map(ticket => renderTicketCard(ticket)).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
+  board.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      ${dbmsTypes.map(dbms => {
+        const tickets = allTickets.filter(t => t.dbms_type === dbms && t.status !== 'done');
+        return `
+          <div class="kanban-column bg-white rounded-lg shadow-sm p-3 sm:p-4 min-w-[280px] sm:min-w-0">
+            <div class="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 class="font-bold text-base sm:text-lg text-gray-700 flex items-center space-x-2">
+                <i class="fas ${DBMS_ICONS[dbms] || 'fa-database'} text-blue-600"></i>
+                <span>${dbms}</span>
+              </h3>
+              <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs sm:text-sm font-semibold">
+                ${tickets.length}
+              </span>
+            </div>
+            <div class="space-y-2 sm:space-y-3">
+              ${tickets.map(ticket => renderTicketCard(ticket)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 function renderTicketCard(ticket) {
@@ -337,54 +375,57 @@ function renderTicketCard(ticket) {
   const slaStatus = getSLAStatus(ticket);
   
   return `
-    <div class="ticket-card bg-white border rounded-lg p-3 shadow-sm hover:shadow-md"
+    <div class="ticket-card bg-white border rounded-lg p-2 sm:p-3 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
          draggable="true"
          data-ticket-id="${ticket.id}"
          ondragstart="handleDragStart(event, ${ticket.id})"
          ondragend="handleDragEnd(event)"
-         onclick="openTicketDetail(${ticket.id})">
+         onclick="openTicketDetail(${ticket.id})"
+         ontouchstart="handleTouchStart(event, ${ticket.id})"
+         ontouchmove="handleTouchMove(event)"
+         ontouchend="handleTouchEnd(event)">
       <div class="flex items-start justify-between mb-2">
-        <div class="flex items-center space-x-2 flex-1">
-          <span class="text-xs font-semibold ${severityClass} px-2 py-1 rounded">
+        <div class="flex items-center space-x-1 sm:space-x-2 flex-1 flex-wrap gap-1">
+          <span class="text-[10px] sm:text-xs font-semibold ${severityClass} px-1.5 sm:px-2 py-0.5 sm:py-1 rounded whitespace-nowrap">
             ${ticket.severity.toUpperCase()}
           </span>
-          <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+          <span class="text-[10px] sm:text-xs bg-gray-100 text-gray-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded whitespace-nowrap">
             ${ticket.dbms_type}
           </span>
         </div>
-        <span class="text-xs text-gray-500">
+        <span class="text-[10px] sm:text-xs text-gray-500 ml-1">
           #${ticket.id}
         </span>
       </div>
       
-      <h4 class="font-semibold text-gray-800 mb-2 line-clamp-2">${ticket.title}</h4>
+      <h4 class="font-semibold text-sm sm:text-base text-gray-800 mb-2 line-clamp-2">${ticket.title}</h4>
       
-      <div class="flex items-center space-x-2 text-xs text-gray-600 mb-2">
+      <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">
         <i class="fas fa-tag"></i>
-        <span>${ticket.work_category}</span>
+        <span class="truncate">${ticket.work_category}</span>
       </div>
       
       ${ticket.instance_host ? `
-        <div class="flex items-center space-x-2 text-xs text-gray-600 mb-2">
+        <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">
           <i class="fas fa-server"></i>
-          <span>${ticket.instance_host} (${ticket.instance_env})</span>
+          <span class="truncate">${ticket.instance_host} (${ticket.instance_env})</span>
         </div>
       ` : ''}
       
       ${slaStatus ? `
-        <div class="flex items-center space-x-2 text-xs mb-2 ${slaStatus.colorClass}">
+        <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs mb-1 sm:mb-2 ${slaStatus.colorClass}">
           <i class="fas fa-clock"></i>
-          <span>${slaStatus.text}</span>
+          <span class="truncate">${slaStatus.text}</span>
         </div>
       ` : ''}
       
       ${ticket.assigned_to_name ? `
-        <div class="flex items-center space-x-2 text-xs text-gray-600 mt-3 pt-2 border-t">
+        <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-600 mt-2 sm:mt-3 pt-2 border-t">
           <i class="fas fa-user"></i>
-          <span>${ticket.assigned_to_name}</span>
+          <span class="truncate">${ticket.assigned_to_name}</span>
         </div>
       ` : `
-        <div class="flex items-center space-x-2 text-xs text-gray-400 mt-3 pt-2 border-t">
+        <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-400 mt-2 sm:mt-3 pt-2 border-t">
           <i class="fas fa-user-slash"></i>
           <span>미할당</span>
         </div>
@@ -510,7 +551,21 @@ async function handleEngineerDrop(event, engineerId) {
 
 // ==================== View Switching ====================
 function changeView() {
-  currentView = document.getElementById('viewMode').value;
+  // 데스크톱과 모바일 뷰 모드 셀렉터 모두 확인
+  const viewMode = document.getElementById('viewMode') || document.getElementById('viewModeMobile');
+  if (!viewMode) return;
+  
+  currentView = viewMode.value;
+  
+  // 다른 뷰 모드 셀렉터도 동기화
+  const otherViewMode = viewMode.id === 'viewMode'
+    ? document.getElementById('viewModeMobile')
+    : document.getElementById('viewMode');
+  
+  if (otherViewMode) {
+    otherViewMode.value = currentView;
+  }
+  
   renderKanbanBoard();
 }
 
@@ -896,6 +951,78 @@ function closeSlaRiskModal() {
   document.getElementById('slaRiskModal').classList.add('hidden');
 }
 
+// ==================== Mobile Menu Toggle ====================
+function toggleMobileMenu() {
+  const mobileMenu = document.getElementById('mobileMenu');
+  if (mobileMenu) {
+    mobileMenu.classList.toggle('hidden');
+  }
+}
+
+// ==================== Touch Events for Mobile Drag & Drop ====================
+let touchStartX = 0;
+let touchStartY = 0;
+let touchTicketId = null;
+let touchElement = null;
+
+function handleTouchStart(event, ticketId) {
+  touchTicketId = ticketId;
+  touchElement = event.currentTarget;
+  const touch = event.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  
+  // 시각적 피드백
+  touchElement.classList.add('opacity-75', 'scale-95');
+}
+
+function handleTouchMove(event) {
+  if (!touchTicketId) return;
+  
+  event.preventDefault(); // 스크롤 방지
+  const touch = event.touches[0];
+  
+  // 드래그 거리 계산
+  const deltaX = Math.abs(touch.clientX - touchStartX);
+  const deltaY = Math.abs(touch.clientY - touchStartY);
+  
+  // 최소 드래그 거리 체크 (20px)
+  if (deltaX > 20 || deltaY > 20) {
+    touchElement.classList.add('dragging');
+  }
+}
+
+function handleTouchEnd(event) {
+  if (!touchTicketId || !touchElement) return;
+  
+  const touch = event.changedTouches[0];
+  const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+  
+  // 드래그 타겟 찾기
+  let dropTarget = targetElement;
+  while (dropTarget && !dropTarget.classList.contains('kanban-column')) {
+    dropTarget = dropTarget.parentElement;
+  }
+  
+  if (dropTarget) {
+    const newStatus = dropTarget.dataset.status;
+    const newEngineerId = dropTarget.dataset.engineer;
+    
+    if (newStatus) {
+      // 상태 변경
+      handleDrop({ preventDefault: () => {} }, newStatus);
+    } else if (newEngineerId) {
+      // 담당자 변경
+      handleEngineerDrop({ preventDefault: () => {} }, parseInt(newEngineerId));
+    }
+  }
+  
+  // 초기화
+  touchElement.classList.remove('opacity-75', 'scale-95', 'dragging');
+  touchTicketId = null;
+  touchElement = null;
+}
+
 // ==================== Notifications ====================
 function showNotification(message, type = 'info') {
   const colors = {
@@ -906,7 +1033,7 @@ function showNotification(message, type = 'info') {
   };
   
   const notification = document.createElement('div');
-  notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300`;
+  notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300 text-sm sm:text-base max-w-sm`;
   notification.textContent = message;
   
   document.body.appendChild(notification);
@@ -936,4 +1063,9 @@ window.closeWeekPicker = closeWeekPicker;
 window.changeWeek = changeWeek;
 window.applyCustomWeek = applyCustomWeek;
 window.showSlaRiskDetails = showSlaRiskDetails;
+window.closeSlaRiskModal = closeSlaRiskModal;
+window.toggleMobileMenu = toggleMobileMenu;
+window.handleTouchStart = handleTouchStart;
+window.handleTouchMove = handleTouchMove;
+window.handleTouchEnd = handleTouchEnd;
 window.closeSlaRiskModal = closeSlaRiskModal;
