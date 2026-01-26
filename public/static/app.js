@@ -762,13 +762,13 @@ async function toggleDashboard() {
       const stats = response.data;
       
       content.innerHTML = `
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
           <!-- 상태별 티켓 -->
-          <div class="bg-white border rounded-lg p-4">
-            <h3 class="font-bold text-lg mb-3">상태별 티켓</h3>
+          <div class="bg-white border rounded-lg p-3 sm:p-4">
+            <h3 class="font-bold text-base sm:text-lg mb-3">상태별 티켓</h3>
             <div class="space-y-2">
               ${stats.status_counts.map(item => `
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center text-sm sm:text-base">
                   <span>${STATUS_LABELS[item.status]}</span>
                   <span class="font-bold">${item.count}</span>
                 </div>
@@ -777,24 +777,24 @@ async function toggleDashboard() {
           </div>
           
           <!-- 심각도별 티켓 -->
-          <div class="bg-white border rounded-lg p-4">
-            <h3 class="font-bold text-lg mb-3">심각도별 티켓 (진행중)</h3>
+          <div class="bg-white border rounded-lg p-3 sm:p-4">
+            <h3 class="font-bold text-base sm:text-lg mb-3">심각도별 티켓 (진행중)</h3>
             <div class="space-y-2">
               ${stats.severity_counts.map(item => `
                 <div class="flex justify-between items-center">
                   <span class="${SEVERITY_COLORS[item.severity]} px-2 py-1 rounded text-xs">${item.severity.toUpperCase()}</span>
-                  <span class="font-bold">${item.count}</span>
+                  <span class="font-bold text-sm sm:text-base">${item.count}</span>
                 </div>
               `).join('')}
             </div>
           </div>
           
           <!-- DBMS별 티켓 -->
-          <div class="bg-white border rounded-lg p-4">
-            <h3 class="font-bold text-lg mb-3">DBMS별 티켓 (진행중)</h3>
+          <div class="bg-white border rounded-lg p-3 sm:p-4">
+            <h3 class="font-bold text-base sm:text-lg mb-3">DBMS별 티켓 (진행중)</h3>
             <div class="space-y-2">
               ${stats.dbms_type_counts.map(item => `
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center text-sm sm:text-base">
                   <span><i class="fas ${DBMS_ICONS[item.dbms_type]} mr-2"></i>${item.dbms_type}</span>
                   <span class="font-bold">${item.count}</span>
                 </div>
@@ -803,17 +803,17 @@ async function toggleDashboard() {
           </div>
           
           <!-- 엔지니어 작업 부하 -->
-          <div class="bg-white border rounded-lg p-4">
-            <h3 class="font-bold text-lg mb-3">엔지니어 작업 부하</h3>
+          <div class="bg-white border rounded-lg p-3 sm:p-4">
+            <h3 class="font-bold text-base sm:text-lg mb-3">엔지니어 작업 부하</h3>
             <div class="space-y-3">
               ${stats.engineer_workload.map(item => {
                 const percentage = (item.current_wip / item.wip_limit * 100).toFixed(0);
                 const barColor = percentage >= 100 ? 'bg-red-600' : percentage >= 80 ? 'bg-orange-500' : 'bg-green-600';
                 return `
                   <div>
-                    <div class="flex justify-between text-sm mb-1">
-                      <span>${item.name}</span>
-                      <span>${item.current_wip} / ${item.wip_limit}</span>
+                    <div class="flex justify-between text-xs sm:text-sm mb-1">
+                      <span class="truncate mr-2">${item.name}</span>
+                      <span class="whitespace-nowrap">${item.current_wip} / ${item.wip_limit}</span>
                     </div>
                     <div class="bg-gray-200 rounded-full h-2">
                       <div class="${barColor} h-2 rounded-full transition-all" style="width: ${Math.min(percentage, 100)}%"></div>
@@ -827,14 +827,14 @@ async function toggleDashboard() {
         
         <!-- SLA 위험 경고 -->
         ${stats.sla_at_risk.count > 0 ? `
-          <div class="mt-6 bg-red-50 border border-red-200 rounded-lg p-4 cursor-pointer hover:bg-red-100 transition"
+          <div class="mt-4 sm:mt-6 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-red-100 transition"
                onclick="showSlaRiskDetails(${JSON.stringify(stats.sla_at_risk).replace(/"/g, '&quot;')})">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2 text-red-700">
-                <i class="fas fa-exclamation-triangle text-2xl"></i>
+                <i class="fas fa-exclamation-triangle text-xl sm:text-2xl"></i>
                 <div>
-                  <p class="font-bold">SLA 위험 경고</p>
-                  <p class="text-sm">현재 <strong>${stats.sla_at_risk.count}건</strong>의 티켓이 SLA 초과 위험에 있습니다.</p>
+                  <p class="font-bold text-sm sm:text-base">SLA 위험 경고</p>
+                  <p class="text-xs sm:text-sm">현재 <strong>${stats.sla_at_risk.count}건</strong>의 티켓이 SLA 초과 위험에 있습니다.</p>
                 </div>
               </div>
               <i class="fas fa-chevron-right text-red-700"></i>

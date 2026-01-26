@@ -572,17 +572,19 @@ app.get('/', (c) => {
 
             <!-- 대시보드 모달 -->
             <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
-                    <div class="p-4 sm:p-6">
-                        <div class="flex justify-between items-center mb-4 sm:mb-6">
-                            <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
-                                <i class="fas fa-chart-line text-blue-600 mr-2"></i>
-                                운영 대시보드
-                            </h2>
-                            <button onclick="toggleDashboard()" class="text-gray-500 hover:text-gray-700">
-                                <i class="fas fa-times text-xl sm:text-2xl"></i>
-                            </button>
-                        </div>
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl my-4 sm:my-8 flex flex-col max-h-[90vh]">
+                    <!-- 고정 헤더 -->
+                    <div class="flex justify-between items-center p-4 sm:p-6 border-b sticky top-0 bg-white rounded-t-lg z-10">
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
+                            <i class="fas fa-chart-line text-blue-600 mr-2"></i>
+                            운영 대시보드
+                        </h2>
+                        <button onclick="toggleDashboard()" class="text-gray-500 hover:text-gray-700 transition">
+                            <i class="fas fa-times text-xl sm:text-2xl"></i>
+                        </button>
+                    </div>
+                    <!-- 스크롤 가능한 컨텐츠 -->
+                    <div class="overflow-y-auto flex-1 p-4 sm:p-6">
                         <div id="dashboardContent" class="space-y-4 sm:space-y-6">
                             <div class="spinner mx-auto"></div>
                         </div>
