@@ -554,8 +554,8 @@ app.get('/', (c) => {
             </header>
 
             <!-- 주차 선택 모달 -->
-            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6 my-4 sm:my-8">
+            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 pt-16 sm:pt-20 overflow-y-auto" onclick="if(event.target === this) closeWeekPicker()">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6 mb-8" onclick="event.stopPropagation()">
                     <h3 class="text-xl font-bold mb-4">주차 선택</h3>
                     <div class="space-y-4">
                         <div>
@@ -571,16 +571,16 @@ app.get('/', (c) => {
             </div>
 
             <!-- 대시보드 모달 -->
-            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl my-4 sm:my-8 flex flex-col max-h-[90vh]">
+            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-start justify-center p-4 sm:p-8 pt-16 sm:pt-20 overflow-y-auto" onclick="if(event.target === this) toggleDashboard()">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mb-8 flex flex-col max-h-[85vh]" onclick="event.stopPropagation()">
                     <!-- 고정 헤더 -->
-                    <div class="flex justify-between items-center p-4 sm:p-6 border-b sticky top-0 bg-white rounded-t-lg z-10">
+                    <div class="flex justify-between items-center p-4 sm:p-6 border-b sticky top-0 bg-white rounded-t-lg z-10 shadow-sm">
                         <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
                             <i class="fas fa-chart-line text-blue-600 mr-2"></i>
                             운영 대시보드
                         </h2>
-                        <button onclick="toggleDashboard()" class="text-gray-500 hover:text-gray-700 transition">
-                            <i class="fas fa-times text-xl sm:text-2xl"></i>
+                        <button onclick="toggleDashboard()" class="text-gray-500 hover:text-gray-800 transition-colors p-2 hover:bg-gray-100 rounded-lg" title="닫기">
+                            <i class="fas fa-times text-2xl sm:text-3xl"></i>
                         </button>
                     </div>
                     <!-- 스크롤 가능한 컨텐츠 -->
@@ -593,8 +593,8 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 생성 모달 -->
-            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
+            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 pt-16 sm:pt-20 overflow-y-auto" onclick="if(event.target === this) closeNewTicketModal()">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto mb-8" onclick="event.stopPropagation()">
                     <div class="p-4 sm:p-6">
                         <h2 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">새 티켓 생성</h2>
                         <form id="newTicketForm" class="space-y-4">
@@ -691,8 +691,8 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 상세 모달 -->
-            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
+            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-start justify-center p-4 pt-16 sm:pt-20 overflow-y-auto" onclick="if(event.target === this) closeTicketDetailModal()">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-y-auto mb-8" onclick="event.stopPropagation()">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4 sm:mb-6">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-800" id="detailTitle"></h2>
@@ -706,16 +706,16 @@ app.get('/', (c) => {
             </div>
 
             <!-- SLA 위험 티켓 목록 모달 -->
-            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
+            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 pt-16 sm:pt-20 overflow-y-auto" onclick="if(event.target === this) closeSlaRiskModal()">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[80vh] overflow-y-auto mb-8" onclick="event.stopPropagation()">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4 sm:mb-6">
                             <div class="flex items-center space-x-2 sm:space-x-3">
                                 <i class="fas fa-exclamation-triangle text-2xl sm:text-3xl text-red-600"></i>
                                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">SLA 위험 티켓 목록</h2>
                             </div>
-                            <button onclick="closeSlaRiskModal()" class="text-gray-500 hover:text-gray-700">
-                                <i class="fas fa-times text-2xl"></i>
+                            <button onclick="closeSlaRiskModal()" class="text-gray-500 hover:text-gray-800 transition-colors p-2 hover:bg-gray-100 rounded-lg" title="닫기">
+                                <i class="fas fa-times text-2xl sm:text-3xl"></i>
                             </button>
                         </div>
                         <div id="slaRiskContent"></div>
