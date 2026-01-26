@@ -43,12 +43,14 @@ app.get('/api/engineers/:id/wip', async (c) => {
   return c.json(result)
 })
 
-// 티켓 목록 조회 (필터링 지원)
+// 티켓 목록 조회 (필터링 지원 + 주차 필터링)
 app.get('/api/tickets', async (c) => {
   const { DB } = c.env
   const status = c.req.query('status')
   const assignedTo = c.req.query('assigned_to')
   const dbmsType = c.req.query('dbms_type')
+  const weekStartDate = c.req.query('week_start_date') // 주 시작일
+  const weekEndDate = c.req.query('week_end_date')     // 주 종료일
   
   let query = `
     SELECT 
@@ -74,6 +76,16 @@ app.get('/api/tickets', async (c) => {
   if (dbmsType) {
     query += ` AND t.dbms_type = ?`
     params.push(dbmsType)
+  }
+  
+  // 주차 필터링 (week_start_date가 지정된 경우)
+  if (weekStartDate && weekEndDate) {
+    query += ` AND t.week_start_date = ? AND t.week_end_date = ?`
+    params.push(weekStartDate, weekEndDate)
+  } else if (weekStartDate) {
+    // week_start_date만 있는 경우
+    query += ` AND t.week_start_date = ?`
+    params.push(weekStartDate)
   }
   
   query += ` ORDER BY t.priority ASC, t.created_at DESC`
@@ -127,7 +139,7 @@ app.post('/api/tickets', async (c) => {
   const {
     title, description, dbms_type, work_category, severity,
     instance_host, instance_env, instance_version,
-    sla_minutes, assigned_to, priority
+    sla_minutes, assigned_to, priority, week_start_date, week_end_date, year_week
   } = body
   
   // 필수 필드 검증
@@ -139,12 +151,13 @@ app.post('/api/tickets', async (c) => {
     INSERT INTO tickets (
       title, description, status, dbms_type, work_category, severity,
       instance_host, instance_env, instance_version, sla_minutes,
-      assigned_to, priority
-    ) VALUES (?, ?, 'todo', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      assigned_to, priority, week_start_date, week_end_date, year_week
+    ) VALUES (?, ?, 'todo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     title, description || '', dbms_type, work_category, severity,
     instance_host || null, instance_env || 'prod', instance_version || null,
-    sla_minutes || null, assigned_to || null, priority || 3
+    sla_minutes || null, assigned_to || null, priority || 3,
+    week_start_date || null, week_end_date || null, year_week || null
   ).run()
   
   return c.json({ 
@@ -452,6 +465,17 @@ app.get('/', (c) => {
                             <h1 class="text-2xl font-bold text-gray-800">RP Kanban Board</h1>
                         </div>
                         <div class="flex items-center space-x-4">
+                            <!-- 주차 선택 -->
+                            <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
+                                <i class="fas fa-calendar-week text-gray-600"></i>
+                                <select id="weekSelector" onchange="changeWeek()" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer font-medium text-gray-700">
+                                    <option value="current">이번 주</option>
+                                </select>
+                                <button onclick="showWeekPicker()" class="text-blue-600 hover:text-blue-700">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </button>
+                            </div>
+                            
                             <button onclick="openNewTicketModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
                                 <i class="fas fa-plus"></i>
                                 <span>새 티켓</span>
@@ -469,6 +493,23 @@ app.get('/', (c) => {
                     </div>
                 </div>
             </header>
+
+            <!-- 주차 선택 모달 -->
+            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-lg shadow-xl w-96 p-6">
+                    <h3 class="text-xl font-bold mb-4">주차 선택</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">시작일 (월요일)</label>
+                            <input type="date" id="customWeekStart" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button onclick="closeWeekPicker()" class="px-4 py-2 border rounded-lg hover:bg-gray-50 transition">취소</button>
+                            <button onclick="applyCustomWeek()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">적용</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- 대시보드 모달 -->
             <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">

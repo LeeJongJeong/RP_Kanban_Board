@@ -3,6 +3,8 @@ let allTickets = [];
 let allEngineers = [];
 let currentView = 'status';
 let draggedTicket = null;
+let currentWeekStart = null;  // 현재 선택된 주의 시작일
+let currentWeekEnd = null;    // 현재 선택된 주의 종료일
 
 // ==================== Constants ====================
 const DBMS_ICONS = {
@@ -30,8 +32,160 @@ const STATUS_LABELS = {
   'done': 'Done'
 };
 
+// ==================== Week Management ====================
+function getCurrentWeek() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // 월요일로 조정
+  
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  
+  return {
+    start: monday,
+    end: sunday
+  };
+}
+
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getYearWeek(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+function updateWeekSelector() {
+  const selector = document.getElementById('weekSelector');
+  if (!selector) return;
+  
+  // 현재 옵션들 저장
+  const currentValue = selector.value;
+  
+  // 최근 8주 옵션 생성
+  const options = [];
+  const now = new Date();
+  
+  for (let i = 0; i < 8; i++) {
+    const weekStart = new Date(now);
+    const day = weekStart.getDay();
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1) - (i * 7);
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const startStr = formatDate(weekStart);
+    const endStr = formatDate(weekEnd);
+    const label = i === 0 ? '이번 주' : 
+                  i === 1 ? '지난 주' : 
+                  `${weekStart.getMonth() + 1}/${weekStart.getDate()} - ${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
+    
+    options.push({
+      value: startStr,
+      label: label,
+      startDate: startStr,
+      endDate: endStr
+    });
+  }
+  
+  // 셀렉터 업데이트
+  selector.innerHTML = options.map(opt => 
+    `<option value="${opt.value}" data-start="${opt.startDate}" data-end="${opt.endDate}">${opt.label}</option>`
+  ).join('');
+  
+  // 기존 값 복원 또는 이번 주 선택
+  if (currentValue && selector.querySelector(`option[value="${currentValue}"]`)) {
+    selector.value = currentValue;
+  } else {
+    selector.value = options[0].value;
+  }
+}
+
+function changeWeek() {
+  const selector = document.getElementById('weekSelector');
+  const selectedOption = selector.options[selector.selectedIndex];
+  
+  currentWeekStart = selectedOption.dataset.start;
+  currentWeekEnd = selectedOption.dataset.end;
+  
+  loadTickets();
+}
+
+function showWeekPicker() {
+  document.getElementById('weekPickerModal').classList.remove('hidden');
+  
+  // 오늘 날짜로 초기화 (가장 가까운 월요일)
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now.setDate(diff));
+  
+  document.getElementById('customWeekStart').value = formatDate(monday);
+}
+
+function closeWeekPicker() {
+  document.getElementById('weekPickerModal').classList.add('hidden');
+}
+
+function applyCustomWeek() {
+  const startInput = document.getElementById('customWeekStart');
+  const startDate = new Date(startInput.value);
+  
+  // 월요일이 아니면 가장 가까운 월요일로 조정
+  const day = startDate.getDay();
+  if (day !== 1) {
+    const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+    startDate.setDate(diff);
+  }
+  
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+  
+  currentWeekStart = formatDate(startDate);
+  currentWeekEnd = formatDate(endDate);
+  
+  // 셀렉터에 커스텀 옵션 추가
+  const selector = document.getElementById('weekSelector');
+  const customOption = document.createElement('option');
+  customOption.value = currentWeekStart;
+  customOption.dataset.start = currentWeekStart;
+  customOption.dataset.end = currentWeekEnd;
+  customOption.textContent = `${startDate.getMonth() + 1}/${startDate.getDate()} - ${endDate.getMonth() + 1}/${endDate.getDate()} (커스텀)`;
+  customOption.selected = true;
+  
+  // 기존 커스텀 옵션 제거
+  const existingCustom = selector.querySelector('option[value*="커스텀"]');
+  if (existingCustom) existingCustom.remove();
+  
+  selector.insertBefore(customOption, selector.firstChild);
+  
+  closeWeekPicker();
+  loadTickets();
+}
+
 // ==================== Initialization ====================
 document.addEventListener('DOMContentLoaded', async () => {
+  // 이번 주로 초기화
+  const thisWeek = getCurrentWeek();
+  currentWeekStart = formatDate(thisWeek.start);
+  currentWeekEnd = formatDate(thisWeek.end);
+  
+  updateWeekSelector();
+  
   await loadEngineers();
   await loadTickets();
   renderKanbanBoard();
@@ -62,8 +216,15 @@ async function loadEngineers() {
 
 async function loadTickets() {
   try {
-    const response = await axios.get('/api/tickets');
+    // 주차 필터링 적용
+    let url = '/api/tickets';
+    if (currentWeekStart && currentWeekEnd) {
+      url += `?week_start_date=${currentWeekStart}&week_end_date=${currentWeekEnd}`;
+    }
+    
+    const response = await axios.get(url);
     allTickets = response.data.tickets;
+    renderKanbanBoard();
   } catch (error) {
     console.error('티켓 로딩 실패:', error);
     showNotification('티켓 정보를 불러오지 못했습니다.', 'error');
@@ -507,12 +668,18 @@ document.getElementById('newTicketForm')?.addEventListener('submit', async (e) =
   if (data.sla_minutes) data.sla_minutes = parseInt(data.sla_minutes);
   if (data.assigned_to) data.assigned_to = parseInt(data.assigned_to);
   
+  // 현재 선택된 주차 정보 추가
+  if (currentWeekStart && currentWeekEnd) {
+    data.week_start_date = currentWeekStart;
+    data.week_end_date = currentWeekEnd;
+    data.year_week = getYearWeek(new Date(currentWeekStart));
+  }
+  
   try {
     await axios.post('/api/tickets', data);
     showNotification('새 티켓이 생성되었습니다.', 'success');
     closeNewTicketModal();
     await loadTickets();
-    renderKanbanBoard();
   } catch (error) {
     console.error('티켓 생성 실패:', error);
     showNotification('티켓 생성에 실패했습니다.', 'error');
