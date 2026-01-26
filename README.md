@@ -357,6 +357,7 @@ webapp/
 ├── DRAG_AND_DROP_TEST.md           # 드래그 앤 드롭 가이드
 ├── SLA_RISK_FEATURE.md             # SLA 위험 기능 가이드
 ├── MOBILE_OPTIMIZATION.md          # 모바일 최적화 가이드
+├── MODAL_FIX_LOG.md                # 모달 위치 조정 로그
 ├── DEPLOYMENT_GUIDE.md             # 배포 가이드
 └── README.md                       # 이 문서
 ```
@@ -364,7 +365,7 @@ webapp/
 ## 개발자 정보
 
 - **프로젝트명**: RP Kanban Board
-- **버전**: v3.4.0 (모바일 반응형 디자인 구현)
+- **버전**: v3.4.1 (모달 위치 조정)
 - **최종 업데이트**: 2026-01-26
 - **현재 주차**: 2026-01-26 ~ 2026-02-01 (2026-W05)
 - **샘플 데이터**: 16개 티켓, 18명 엔지니어
