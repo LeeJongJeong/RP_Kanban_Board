@@ -36,9 +36,15 @@ const STATUS_LABELS = {
 function getCurrentWeek() {
   const now = new Date();
   const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // 월요일로 조정
   
-  const monday = new Date(now.setDate(diff));
+  // 일요일(0)을 7로 변환하여 계산
+  const dayOfWeek = day === 0 ? 7 : day;
+  
+  // 이번 주 월요일 계산 (1=월요일, 7=일요일)
+  const diff = dayOfWeek - 1;
+  
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diff);
   monday.setHours(0, 0, 0, 0);
   
   const sunday = new Date(monday);
@@ -184,11 +190,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   currentWeekStart = formatDate(thisWeek.start);
   currentWeekEnd = formatDate(thisWeek.end);
   
+  console.log('초기화:', currentWeekStart, '~', currentWeekEnd);
+  
   updateWeekSelector();
   
   await loadEngineers();
-  await loadTickets();
-  renderKanbanBoard();
+  await loadTickets();  // loadTickets 내부에서 renderKanbanBoard() 호출됨
 });
 
 // ==================== Data Loading ====================
