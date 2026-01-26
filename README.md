@@ -13,6 +13,7 @@
 - 📊 **Multi-View**: 상태별/엔지니어별/DBMS별 뷰 전환
 - 🖱️ **드래그 앤 드롭**: 직관적인 티켓 상태 변경 및 담당자 할당
 - 📈 **운영 대시보드**: 부서장을 위한 실시간 리소스 현황 및 SLA 위험 모니터링
+- 📱 **모바일 최적화**: 스마트폰과 태블릿에서 완벽하게 작동하는 반응형 디자인
 
 ## 현재 완료된 기능
 
@@ -24,9 +25,11 @@
 
 2. **칸반 보드**
    - 4가지 상태 컬럼: To-Do, In-Progress, Review, Done
-   - 드래그 앤 드롭으로 티켓 상태 변경
+   - 드래그 앤 드롭으로 티켓 상태 변경 (데스크톱)
+   - 터치 드래그 앤 드롭 지원 (모바일)
    - 실시간 SLA 타이머 표시 (안전/경고/위험 색상 구분)
    - Severity 뱃지 (Critical, High, Medium, Low)
+   - 반응형 레이아웃 (1~4열 자동 조정)
 
 3. **Multi-View 시스템**
    - 상태별 보기: 워크플로우 진행 상황 추적
@@ -50,7 +53,7 @@
    - 심각도별 티켓 분포
    - DBMS별 작업 부하
    - 엔지니어별 WIP 현황 (게이지 바)
-   - SLA 위험 경고 (임계치 초과 티켓 표시)
+   - SLA 위험 경고 (임계치 초과 티켓 표시 및 상세 정보)
 
 7. **코멘트 시스템**
    - 티켓별 기술 노트 작성
@@ -61,6 +64,14 @@
    - 티켓 상태 변경 이력
    - 담당자 변경 이력
    - 변경 시간 및 변경자 기록
+
+9. **모바일 최적화** ✨ NEW
+   - 반응형 헤더 (햄버거 메뉴)
+   - 터치 드래그 앤 드롭
+   - 1~4열 자동 레이아웃
+   - 모바일 최적화 티켓 카드
+   - 모달 크기 자동 조정
+   - 상세 가이드: [MOBILE_OPTIMIZATION.md](./MOBILE_OPTIMIZATION.md)
 
 ### 팀 구성 및 담당 DBMS
 - **DS1T 팀 (9명)**: PostgreSQL, EDB, MongoDB, SingleStore 담당
@@ -318,6 +329,13 @@ npm run deploy
 - [ ] **API Gateway**: 외부 시스템 통합 (Jira, ServiceNow 등)
 - [ ] **보고서 생성**: 월간/주간 리포트 자동 생성
 
+### Phase 5: 모바일 고도화 (예정)
+- [ ] **PWA 지원**: 오프라인 모드 및 홈 화면 추가
+- [ ] **제스처 지원**: 스와이프로 상태 변경
+- [ ] **햅틱 피드백**: 터치 반응 강화
+- [ ] **다크 모드**: 야간 작업 환경 지원
+- [ ] **음성 명령**: 핸즈프리 티켓 생성
+
 ## 프로젝트 구조
 
 ```
@@ -329,19 +347,24 @@ webapp/
 │       ├── app.js              # 프론트엔드 JavaScript
 │       └── style.css           # 커스텀 CSS
 ├── migrations/
-│   └── 0001_initial_schema.sql # D1 데이터베이스 스키마
-├── seed.sql                    # 샘플 데이터
-├── ecosystem.config.cjs        # PM2 설정
-├── wrangler.jsonc              # Cloudflare 설정
-├── vite.config.ts              # Vite 빌드 설정
-├── package.json                # 의존성 및 스크립트
-└── README.md                   # 이 문서
+│   ├── 0001_initial_schema.sql     # D1 데이터베이스 스키마
+│   └── 0002_add_week_management.sql # 주차 관리 필드 추가
+├── seed.sql                        # 샘플 데이터
+├── ecosystem.config.cjs            # PM2 설정
+├── wrangler.jsonc                  # Cloudflare 설정
+├── vite.config.ts                  # Vite 빌드 설정
+├── package.json                    # 의존성 및 스크립트
+├── DRAG_AND_DROP_TEST.md           # 드래그 앤 드롭 가이드
+├── SLA_RISK_FEATURE.md             # SLA 위험 기능 가이드
+├── MOBILE_OPTIMIZATION.md          # 모바일 최적화 가이드
+├── DEPLOYMENT_GUIDE.md             # 배포 가이드
+└── README.md                       # 이 문서
 ```
 
 ## 개발자 정보
 
 - **프로젝트명**: RP Kanban Board
-- **버전**: v3.3.1 (모달 z-index 계층 구조 수정)
+- **버전**: v3.4.0 (모바일 반응형 디자인 구현)
 - **최종 업데이트**: 2026-01-26
 - **현재 주차**: 2026-01-26 ~ 2026-02-01 (2026-W05)
 - **샘플 데이터**: 16개 티켓, 18명 엔지니어
@@ -349,13 +372,18 @@ webapp/
 
 ## 📖 추가 문서
 
-- [드래그 앤 드롭 테스트 가이드](./DRAG_AND_DROP_TEST.md): 드래그 앤 드롭 기능 사용법 및 기술 구현 세부사항
+- [모바일 최적화 가이드](./MOBILE_OPTIMIZATION.md): 반응형 디자인 및 터치 이벤트 구현 세부사항 ✨ NEW
+- [드래그 앤 드롭 테스트 가이드](./DRAG_AND_DROP_TEST.md): 드래그 앤 드롭 기능 사용법 및 기술 구현
 - [SLA 위험 경고 상세 정보 기능](./SLA_RISK_FEATURE.md): SLA 위험 티켓 목록 모달 사용 가이드
+- [배포 가이드](./DEPLOYMENT_GUIDE.md): 프로덕션 배포 및 데이터베이스 설정 가이드
 
 ## 추천 다음 단계
 
 1. **사용자 인증 추가**: 실제 프로덕션 사용을 위한 로그인 시스템 구현
 2. **Slack 통합**: 긴급 티켓 생성 시 Slack 알림 전송
+3. **PWA 지원**: 오프라인 모드 및 홈 화면 추가로 네이티브 앱처럼 사용 ✨ 모바일 완료 후 추천
+4. **성능 모니터링**: Cloudflare Analytics 통합
+5. **백업 전략**: D1 데이터 정기 백업 스크립트 작성
 3. **모바일 최적화**: 반응형 디자인 개선 (현재는 데스크톱 중심)
 4. **성능 모니터링**: Cloudflare Analytics 통합
 5. **백업 전략**: D1 데이터 정기 백업 스크립트 작성
