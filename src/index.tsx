@@ -554,8 +554,8 @@ app.get('/', (c) => {
             </header>
 
             <!-- 주차 선택 모달 -->
-            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6">
+            <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6 my-4 sm:my-8">
                     <h3 class="text-xl font-bold mb-4">주차 선택</h3>
                     <div class="space-y-4">
                         <div>
@@ -571,19 +571,19 @@ app.get('/', (c) => {
             </div>
 
             <!-- 대시보드 모달 -->
-            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-2 sm:p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-                    <div class="p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-800">
+            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
+                    <div class="p-4 sm:p-6">
+                        <div class="flex justify-between items-center mb-4 sm:mb-6">
+                            <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
                                 <i class="fas fa-chart-line text-blue-600 mr-2"></i>
                                 운영 대시보드
                             </h2>
                             <button onclick="toggleDashboard()" class="text-gray-500 hover:text-gray-700">
-                                <i class="fas fa-times text-2xl"></i>
+                                <i class="fas fa-times text-xl sm:text-2xl"></i>
                             </button>
                         </div>
-                        <div id="dashboardContent" class="space-y-6">
+                        <div id="dashboardContent" class="space-y-4 sm:space-y-6">
                             <div class="spinner mx-auto"></div>
                         </div>
                     </div>
@@ -591,8 +591,8 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 생성 모달 -->
-            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
                     <div class="p-4 sm:p-6">
                         <h2 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">새 티켓 생성</h2>
                         <form id="newTicketForm" class="space-y-4">
@@ -689,8 +689,8 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 상세 모달 -->
-            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-2 sm:p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4 sm:mb-6">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-800" id="detailTitle"></h2>
@@ -704,8 +704,8 @@ app.get('/', (c) => {
             </div>
 
             <!-- SLA 위험 티켓 목록 모달 -->
-            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] sm:max-h-[85vh] overflow-y-auto my-4 sm:my-8">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4 sm:mb-6">
                             <div class="flex items-center space-x-2 sm:space-x-3">
