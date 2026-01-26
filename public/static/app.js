@@ -812,3 +812,21 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notification.remove(), 300);
   }, 3000);
 }
+
+// ==================== Global Exports for Inline Handlers ====================
+// HTML inline 이벤트 핸들러를 위해 함수들을 전역으로 노출
+window.handleDragStart = handleDragStart;
+window.handleDragEnd = handleDragEnd;
+window.handleDragOver = handleDragOver;
+window.handleDragLeave = handleDragLeave;
+window.handleDrop = handleDrop;
+window.handleEngineerDrop = handleEngineerDrop;
+window.openTicketDetail = openTicketDetail;
+window.closeTicketDetail = closeTicketDetail;
+window.changeView = changeView;
+window.showDashboard = showDashboard;
+window.openNewTicketModal = openNewTicketModal;
+window.closeNewTicketModal = closeNewTicketModal;
+window.openWeekPickerModal = openWeekPickerModal;
+window.closeWeekPickerModal = closeWeekPickerModal;
+window.selectWeek = selectWeek;
