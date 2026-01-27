@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
+import { Bindings } from './bindings'
 
-type Bindings = {
-  DB: D1Database
-}
+// Import Routes
+import tickets from './routes/tickets'
+import engineers from './routes/engineers'
+import dashboard from './routes/dashboard'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -14,406 +16,17 @@ app.use('/api/*', cors())
 // Static files
 app.use('/static/*', serveStatic({ root: './public' }))
 
-// ==================== API Routes ====================
-
-// 엔지니어 목록 조회
-app.get('/api/engineers', async (c) => {
-  const { DB } = c.env
-  const result = await DB.prepare(`
-    SELECT id, name, email, role, wip_limit, is_active 
-    FROM engineers 
-    WHERE is_active = 1
-    ORDER BY name
-  `).all()
-  
-  return c.json({ engineers: result.results })
-})
-
-// 엔지니어별 현재 WIP 카운트 조회
-app.get('/api/engineers/:id/wip', async (c) => {
-  const { DB } = c.env
-  const engineerId = c.req.param('id')
-  
-  const result = await DB.prepare(`
-    SELECT COUNT(*) as current_wip
-    FROM tickets 
-    WHERE assigned_to = ? AND status IN ('todo', 'in_progress', 'review')
-  `).bind(engineerId).first()
-  
-  return c.json(result)
-})
-
-// 티켓 목록 조회 (필터링 지원 + 주차 필터링)
-app.get('/api/tickets', async (c) => {
-  const { DB } = c.env
-  const status = c.req.query('status')
-  const assignedTo = c.req.query('assigned_to')
-  const dbmsType = c.req.query('dbms_type')
-  const weekStartDate = c.req.query('week_start_date') // 주 시작일
-  const weekEndDate = c.req.query('week_end_date')     // 주 종료일
-  
-  let query = `
-    SELECT 
-      t.*,
-      e.name as assigned_to_name,
-      e.email as assigned_to_email
-    FROM tickets t
-    LEFT JOIN engineers e ON t.assigned_to = e.id
-    WHERE 1=1
-  `
-  const params: any[] = []
-  
-  if (status) {
-    query += ` AND t.status = ?`
-    params.push(status)
-  }
-  
-  if (assignedTo) {
-    query += ` AND t.assigned_to = ?`
-    params.push(assignedTo)
-  }
-  
-  if (dbmsType) {
-    query += ` AND t.dbms_type = ?`
-    params.push(dbmsType)
-  }
-  
-  // 주차 필터링 (week_start_date가 지정된 경우)
-  if (weekStartDate && weekEndDate) {
-    query += ` AND t.week_start_date = ? AND t.week_end_date = ?`
-    params.push(weekStartDate, weekEndDate)
-  } else if (weekStartDate) {
-    // week_start_date만 있는 경우
-    query += ` AND t.week_start_date = ?`
-    params.push(weekStartDate)
-  }
-  
-  query += ` ORDER BY t.priority ASC, t.created_at DESC`
-  
-  const result = await DB.prepare(query).bind(...params).all()
-  
-  return c.json({ tickets: result.results })
-})
-
-// 티켓 상세 조회
-app.get('/api/tickets/:id', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  
-  const ticket = await DB.prepare(`
-    SELECT 
-      t.*,
-      e.name as assigned_to_name,
-      e.email as assigned_to_email
-    FROM tickets t
-    LEFT JOIN engineers e ON t.assigned_to = e.id
-    WHERE t.id = ?
-  `).bind(ticketId).first()
-  
-  if (!ticket) {
-    return c.json({ error: 'Ticket not found' }, 404)
-  }
-  
-  // 코멘트 조회
-  const comments = await DB.prepare(`
-    SELECT 
-      c.*,
-      e.name as engineer_name
-    FROM comments c
-    JOIN engineers e ON c.engineer_id = e.id
-    WHERE c.ticket_id = ?
-    ORDER BY c.created_at DESC
-  `).bind(ticketId).all()
-  
-  return c.json({ 
-    ticket, 
-    comments: comments.results 
-  })
-})
-
-// 티켓 생성
-app.post('/api/tickets', async (c) => {
-  const { DB } = c.env
-  const body = await c.req.json()
-  
-  const {
-    title, description, dbms_type, work_category, severity,
-    instance_host, instance_env, instance_version,
-    sla_minutes, assigned_to, priority, week_start_date, week_end_date, year_week
-  } = body
-  
-  // 필수 필드 검증
-  if (!title || !dbms_type || !work_category || !severity) {
-    return c.json({ error: 'Required fields missing' }, 400)
-  }
-  
-  const result = await DB.prepare(`
-    INSERT INTO tickets (
-      title, description, status, dbms_type, work_category, severity,
-      instance_host, instance_env, instance_version, sla_minutes,
-      assigned_to, priority, week_start_date, week_end_date, year_week
-    ) VALUES (?, ?, 'todo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    title, description || '', dbms_type, work_category, severity,
-    instance_host || null, instance_env || 'prod', instance_version || null,
-    sla_minutes || null, assigned_to || null, priority || 3,
-    week_start_date || null, week_end_date || null, year_week || null
-  ).run()
-  
-  return c.json({ 
-    success: true, 
-    ticket_id: result.meta.last_row_id 
-  }, 201)
-})
-
-// 티켓 상태 변경
-app.patch('/api/tickets/:id/status', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  const body = await c.req.json()
-  const { status, changed_by } = body
-  
-  if (!status || !changed_by) {
-    return c.json({ error: 'status and changed_by required' }, 400)
-  }
-  
-  // 현재 티켓 상태 조회
-  const currentTicket = await DB.prepare(`
-    SELECT status FROM tickets WHERE id = ?
-  `).bind(ticketId).first() as any
-  
-  if (!currentTicket) {
-    return c.json({ error: 'Ticket not found' }, 404)
-  }
-  
-  // 상태 업데이트
-  const updates: string[] = ['status = ?']
-  const params: any[] = [status]
-  
-  // in_progress로 변경시 started_at 설정
-  if (status === 'in_progress' && !currentTicket.started_at) {
-    updates.push('started_at = CURRENT_TIMESTAMP')
-  }
-  
-  // done으로 변경시 resolved_at 설정
-  if (status === 'done') {
-    updates.push('resolved_at = CURRENT_TIMESTAMP')
-  }
-  
-  updates.push('updated_at = CURRENT_TIMESTAMP')
-  params.push(ticketId)
-  
-  await DB.prepare(`
-    UPDATE tickets 
-    SET ${updates.join(', ')}
-    WHERE id = ?
-  `).bind(...params).run()
-  
-  // 히스토리 기록
-  await DB.prepare(`
-    INSERT INTO ticket_history (ticket_id, changed_by, field_name, old_value, new_value)
-    VALUES (?, ?, 'status', ?, ?)
-  `).bind(ticketId, changed_by, currentTicket.status, status).run()
-  
-  return c.json({ success: true })
-})
-
-// 티켓 담당자 변경
-app.patch('/api/tickets/:id/assign', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  const body = await c.req.json()
-  const { assigned_to, changed_by } = body
-  
-  if (!changed_by) {
-    return c.json({ error: 'changed_by required' }, 400)
-  }
-  
-  // 현재 담당자 조회
-  const currentTicket = await DB.prepare(`
-    SELECT assigned_to FROM tickets WHERE id = ?
-  `).bind(ticketId).first() as any
-  
-  if (!currentTicket) {
-    return c.json({ error: 'Ticket not found' }, 404)
-  }
-  
-  // 담당자 업데이트
-  await DB.prepare(`
-    UPDATE tickets 
-    SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).bind(assigned_to || null, ticketId).run()
-  
-  // 히스토리 기록
-  await DB.prepare(`
-    INSERT INTO ticket_history (ticket_id, changed_by, field_name, old_value, new_value)
-    VALUES (?, ?, 'assigned_to', ?, ?)
-  `).bind(
-    ticketId, 
-    changed_by, 
-    currentTicket.assigned_to?.toString() || 'null', 
-    assigned_to?.toString() || 'null'
-  ).run()
-  
-  return c.json({ success: true })
-})
-
-// 티켓 수정
-app.put('/api/tickets/:id', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  const body = await c.req.json()
-  
-  const {
-    title, description, severity, priority,
-    instance_host, instance_env, instance_version,
-    sla_minutes
-  } = body
-  
-  await DB.prepare(`
-    UPDATE tickets 
-    SET 
-      title = ?,
-      description = ?,
-      severity = ?,
-      priority = ?,
-      instance_host = ?,
-      instance_env = ?,
-      instance_version = ?,
-      sla_minutes = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).bind(
-    title, description, severity, priority,
-    instance_host, instance_env, instance_version,
-    sla_minutes, ticketId
-  ).run()
-  
-  return c.json({ success: true })
-})
-
-// 티켓 삭제
-app.delete('/api/tickets/:id', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  
-  await DB.prepare(`DELETE FROM tickets WHERE id = ?`).bind(ticketId).run()
-  
-  return c.json({ success: true })
-})
-
-// 코멘트 추가
-app.post('/api/tickets/:id/comments', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  const body = await c.req.json()
-  
-  const { engineer_id, content, comment_type } = body
-  
-  if (!engineer_id || !content) {
-    return c.json({ error: 'engineer_id and content required' }, 400)
-  }
-  
-  const result = await DB.prepare(`
-    INSERT INTO comments (ticket_id, engineer_id, content, comment_type)
-    VALUES (?, ?, ?, ?)
-  `).bind(ticketId, engineer_id, content, comment_type || 'note').run()
-  
-  return c.json({ 
-    success: true, 
-    comment_id: result.meta.last_row_id 
-  }, 201)
-})
-
-// 대시보드 통계 (부서장용)
-app.get('/api/dashboard/stats', async (c) => {
-  const { DB } = c.env
-  
-  // 상태별 티켓 수
-  const statusCounts = await DB.prepare(`
-    SELECT status, COUNT(*) as count
-    FROM tickets
-    GROUP BY status
-  `).all()
-  
-  // Severity별 티켓 수
-  const severityCounts = await DB.prepare(`
-    SELECT severity, COUNT(*) as count
-    FROM tickets
-    WHERE status != 'done'
-    GROUP BY severity
-  `).all()
-  
-  // DBMS 타입별 티켓 수
-  const dbmsTypeCounts = await DB.prepare(`
-    SELECT dbms_type, COUNT(*) as count
-    FROM tickets
-    WHERE status != 'done'
-    GROUP BY dbms_type
-  `).all()
-  
-  // 엔지니어별 작업 부하
-  const engineerWorkload = await DB.prepare(`
-    SELECT 
-      e.id,
-      e.name,
-      e.wip_limit,
-      COUNT(t.id) as current_wip
-    FROM engineers e
-    LEFT JOIN tickets t ON e.id = t.assigned_to AND t.status IN ('todo', 'in_progress', 'review')
-    WHERE e.is_active = 1
-    GROUP BY e.id, e.name, e.wip_limit
-    ORDER BY current_wip DESC
-  `).all()
-  
-  // SLA 위반 위험 티켓 (긴급) - 상세 정보 포함
-  const slaAtRiskTickets = await DB.prepare(`
-    SELECT 
-      t.id,
-      t.title,
-      t.status,
-      t.severity,
-      t.dbms_type,
-      t.sla_minutes,
-      t.started_at,
-      t.created_at,
-      e.name as assigned_to_name,
-      CAST((julianday('now') - julianday(COALESCE(t.started_at, t.created_at))) * 24 * 60 AS INTEGER) as elapsed_minutes
-    FROM tickets t
-    LEFT JOIN engineers e ON t.assigned_to = e.id
-    WHERE 
-      t.status IN ('todo', 'in_progress') 
-      AND t.sla_minutes IS NOT NULL
-      AND t.severity IN ('critical', 'high')
-      AND (
-        (t.started_at IS NOT NULL AND 
-         (julianday('now') - julianday(t.started_at)) * 24 * 60 > t.sla_minutes * 0.8)
-        OR
-        (t.started_at IS NULL AND 
-         (julianday('now') - julianday(t.created_at)) * 24 * 60 > t.sla_minutes * 0.5)
-      )
-    ORDER BY t.severity DESC, elapsed_minutes DESC
-  `).all()
-  
-  const slaAtRisk = {
-    count: slaAtRiskTickets.results.length,
-    tickets: slaAtRiskTickets.results
-  }
-  
-  return c.json({
-    status_counts: statusCounts.results,
-    severity_counts: severityCounts.results,
-    dbms_type_counts: dbmsTypeCounts.results,
-    engineer_workload: engineerWorkload.results,
-    sla_at_risk: slaAtRisk
-  })
-})
+// Mount Routes
+app.route('/api/tickets', tickets)
+app.route('/api/engineers', engineers)
+app.route('/api/dashboard', dashboard)
 
 // ==================== Frontend ====================
 
+
+
 app.get('/', (c) => {
-  return c.html(`
+    return c.html(`
     <!DOCTYPE html>
     <html lang="ko">
     <head>
@@ -491,15 +104,34 @@ app.get('/', (c) => {
                     <!-- 데스크톱 메뉴 -->
                     <div class="hidden sm:flex items-center justify-between mt-3">
                         <div class="flex items-center space-x-4">
-                            <!-- 주차 선택 -->
-                            <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
-                                <i class="fas fa-calendar-week text-gray-600"></i>
-                                <select id="weekSelector" onchange="changeWeek()" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer font-medium text-gray-700">
+                            <!-- 기간 선택 -->
+                            <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 relative">
+                                <i class="fas fa-calendar-alt text-gray-600"></i>
+                                <select id="periodSelector" onchange="handlePeriodChange(this.value)" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer font-medium text-gray-700">
                                     <option value="current">이번 주</option>
+                                    <option value="1m">최근 1달</option>
+                                    <option value="3m">최근 3개월</option>
+                                    <option value="custom">기간 선택</option>
                                 </select>
-                                <button onclick="showWeekPicker()" class="text-blue-600 hover:text-blue-700">
-                                    <i class="fas fa-calendar-alt"></i>
-                                </button>
+                                
+                                <!-- 날짜 범위 선택 모달 (Absolute Position) -->
+                                <div id="dateRangeModal" class="hidden absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border p-4 z-50 w-72">
+                                    <h3 class="font-bold text-gray-800 mb-3 text-sm">기간 직접 선택</h3>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">시작일</label>
+                                            <input type="date" id="customStartDate" class="w-full border rounded px-2 py-1 text-sm bg-gray-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">종료일</label>
+                                            <input type="date" id="customEndDate" class="w-full border rounded px-2 py-1 text-sm bg-gray-50">
+                                        </div>
+                                        <div class="flex justify-end space-x-2 pt-2">
+                                            <button onclick="closeDateRangeModal()" class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded">취소</button>
+                                            <button onclick="applyCustomDate()" class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">적용</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             
                             <button onclick="openNewTicketModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
@@ -522,15 +154,15 @@ app.get('/', (c) => {
                     
                     <!-- 모바일 메뉴 -->
                     <div id="mobileMenu" class="hidden sm:hidden mt-3 space-y-2">
-                        <!-- 주차 선택 -->
+                        <!-- 주차/기간 선택 (Unified with Desktop) -->
                         <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
-                            <i class="fas fa-calendar-week text-gray-600 text-sm"></i>
-                            <select id="weekSelectorMobile" onchange="changeWeek()" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer text-sm font-medium text-gray-700 flex-1">
+                            <i class="fas fa-calendar-alt text-gray-600 text-sm"></i>
+                            <select id="periodSelectorMobile" onchange="handlePeriodChange(this.value)" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer text-sm font-medium text-gray-700 flex-1">
                                 <option value="current">이번 주</option>
+                                <option value="1m">최근 1달</option>
+                                <option value="3m">최근 3개월</option>
+                                <option value="custom">기간 선택</option>
                             </select>
-                            <button onclick="showWeekPicker()" class="text-blue-600 hover:text-blue-700">
-                                <i class="fas fa-calendar-alt text-sm"></i>
-                            </button>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-2">
@@ -575,19 +207,20 @@ app.get('/', (c) => {
             </div>
 
             <!-- 대시보드 모달 -->
-            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 flex items-end sm:items-center justify-center overflow-y-auto" onclick="if(event.target === this) toggleDashboard()">
-                <div class="bg-white rounded-t-2xl sm:rounded-lg shadow-2xl w-full max-w-6xl flex flex-col max-h-[85vh] sm:max-h-[75vh] sm:my-8 relative" onclick="event.stopPropagation()">
-                    <!-- 닫기 버튼 (절대 위치 - 항상 보임) -->
-                    <button onclick="toggleDashboard()" class="absolute top-4 right-4 z-50 text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors w-12 h-12 flex items-center justify-center rounded-full shadow-xl hover:shadow-2xl" title="닫기">
-                        <i class="fas fa-times text-2xl"></i>
-                    </button>
+            <div id="dashboardModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) toggleDashboard()">
+                <div class="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto flex flex-col" onclick="event.stopPropagation()">
                     <!-- 헤더 -->
-                    <div class="flex items-center gap-4 px-4 py-6 sm:px-6 border-b bg-gradient-to-r from-blue-50 to-white rounded-t-2xl sm:rounded-t-lg">
-                        <i class="fas fa-chart-line text-blue-600 text-2xl"></i>
-                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
-                            <span class="hidden sm:inline">운영 대시보드</span>
-                            <span class="sm:hidden">대시보드</span>
-                        </h2>
+                    <div class="flex items-center justify-between px-6 py-6 sm:px-8 border-b bg-gradient-to-r from-blue-50 to-white rounded-t-2xl sm:rounded-t-lg">
+                        <div class="flex items-center gap-5">
+                            <i class="fas fa-chart-line text-blue-600 text-3xl"></i>
+                            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800">
+                                <span class="hidden sm:inline">운영 대시보드</span>
+                                <span class="sm:hidden">대시보드</span>
+                            </h2>
+                        </div>
+                        <button onclick="toggleDashboard()" class="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100">
+                             <i class="fas fa-times text-2xl"></i>
+                        </button>
                     </div>
                     <!-- 스크롤 가능한 컨텐츠 -->
                     <div class="overflow-y-auto flex-1 p-4 sm:p-6">
@@ -599,11 +232,17 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 생성 모달 -->
-            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) closeNewTicketModal()">
+            <div id="newTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto">
                 <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl my-8 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
                     <div class="p-4 sm:p-6">
-                        <h2 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">새 티켓 생성</h2>
+                        <div class="flex justify-between items-center mb-3 sm:mb-4">
+                            <h2 class="text-xl sm:text-2xl font-bold">새 티켓 생성</h2>
+                            <button onclick="closeNewTicketModal()" class="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
                         <form id="newTicketForm" class="space-y-4">
+
                             <div>
                                 <label class="block text-sm font-medium mb-1">제목 *</label>
                                 <input type="text" name="title" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -697,14 +336,31 @@ app.get('/', (c) => {
             </div>
 
             <!-- 티켓 상세 모달 -->
-            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) closeTicketDetailModal()">
-                <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl my-8 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[120] flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) closeTicketDetailModal()">
+                <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl my-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4 sm:mb-6">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-800" id="detailTitle"></h2>
-                            <button onclick="closeTicketDetailModal()" class="text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors px-4 py-4 rounded-full shadow-lg hover:shadow-xl" title="닫기">
-                                <i class="fas fa-times text-2xl"></i>
-                            </button>
+                            <div class="flex items-center space-x-2">
+                                <!-- View Mode Buttons -->
+                                <button id="btnTicketEdit" class="text-gray-400 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-blue-50" title="수정">
+                                    <i class="fas fa-edit text-xl"></i>
+                                </button>
+                                <button id="btnTicketDelete" class="text-gray-400 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-red-50" title="삭제">
+                                    <i class="fas fa-trash-alt text-xl"></i>
+                                </button>
+                                <button id="btnTicketClose" onclick="closeTicketDetailModal()" class="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100" title="닫기 desk">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                                
+                                <!-- Edit Mode Buttons (Hidden by default) -->
+                                <button id="btnTicketSave" class="hidden text-green-500 hover:text-green-700 transition-colors p-2 rounded-full hover:bg-green-50" title="저장">
+                                    <i class="fas fa-check text-xl"></i>
+                                </button>
+                                <button id="btnTicketCancel" class="hidden text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100" title="취소">
+                                    <i class="fas fa-undo text-xl"></i>
+                                </button>
+                            </div>
                         </div>
                         <div id="ticketDetailContent"></div>
                     </div>
@@ -712,7 +368,7 @@ app.get('/', (c) => {
             </div>
 
             <!-- SLA 위험 티켓 목록 모달 -->
-            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) closeSlaRiskModal()">
+            <div id="slaRiskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[110] flex items-center justify-center px-4 py-8 sm:px-8 overflow-y-auto" onclick="if(event.target === this) closeSlaRiskModal()">
                 <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl my-8 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4 sm:mb-6">
@@ -720,8 +376,8 @@ app.get('/', (c) => {
                                 <i class="fas fa-exclamation-triangle text-2xl sm:text-3xl text-red-600"></i>
                                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">SLA 위험 티켓 목록</h2>
                             </div>
-                            <button onclick="closeSlaRiskModal()" class="text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors px-4 py-4 rounded-full shadow-lg hover:shadow-xl" title="닫기">
-                                <i class="fas fa-times text-2xl"></i>
+                            <button onclick="closeSlaRiskModal()" class="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100" title="닫기">
+                                <i class="fas fa-times text-xl"></i>
                             </button>
                         </div>
                         <div id="slaRiskContent"></div>
@@ -738,7 +394,10 @@ app.get('/', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        
+        <!-- Frontend Modular Scripts will go here later, for now keeping legacy app.js -->
+        <script src="/static/app.js" type="module"></script>
     </body>
     </html>
   `)

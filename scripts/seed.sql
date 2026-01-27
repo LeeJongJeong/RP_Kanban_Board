@@ -28,7 +28,8 @@ INSERT INTO engineers (name, email, role, wip_limit) VALUES
 INSERT INTO tickets (
   title, description, status, dbms_type, work_category, severity, 
   instance_host, instance_env, instance_version, sla_minutes, 
-  assigned_to, priority, started_at
+  assigned_to, priority, started_at,
+  week_start_date, week_end_date, year_week
 ) VALUES 
   -- DS2T 티켓들 (MySQL, MariaDB, Redis, HeatWave)
   (
@@ -44,7 +45,10 @@ INSERT INTO tickets (
     60,
     10,  -- 임종민 (DS2T - MySQL 담당)
     1,
-    datetime('now', '-15 minutes')
+    datetime('now', '-15 minutes'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'MySQL 8.0 to 8.4 업그레이드 계획',
@@ -59,7 +63,10 @@ INSERT INTO tickets (
     NULL,
     11,  -- 이소라 (DS2T - MySQL 담당)
     2,
-    NULL
+    NULL,
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'MariaDB 정기 헬스체크',
@@ -74,7 +81,10 @@ INSERT INTO tickets (
     NULL,
     13,  -- 고재훈 (DS2T - MariaDB 담당)
     4,
-    datetime('now', '-2 hours')
+    datetime('now', '-2 hours'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'Redis Cluster 패치 적용',
@@ -89,7 +99,10 @@ INSERT INTO tickets (
     NULL,
     14,  -- 추건우 (DS2T - Redis 담당)
     3,
-    datetime('now', '-1 day')
+    datetime('now', '-1 day'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'Redis Sentinel 장애 조치 테스트',
@@ -104,7 +117,10 @@ INSERT INTO tickets (
     NULL,
     15,  -- 엄혜진 (DS2T - Redis 담당)
     3,
-    datetime('now', '-3 hours')
+    datetime('now', '-3 hours'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'HeatWave Auto Parallel Load 최적화',
@@ -119,7 +135,10 @@ INSERT INTO tickets (
     240,
     16,  -- 배재준 (DS2T - HeatWave 담당)
     2,
-    datetime('now', '-45 minutes')
+    datetime('now', '-45 minutes'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'MariaDB MaxScale 로드밸런싱 설정',
@@ -134,7 +153,10 @@ INSERT INTO tickets (
     NULL,
     17,  -- 박재원 (DS2T - MariaDB 담당)
     3,
-    NULL
+    NULL,
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   
   -- DS1T 티켓들 (PostgreSQL, EDB, MongoDB, SingleStore)
@@ -151,7 +173,10 @@ INSERT INTO tickets (
     240,
     1,  -- 최영준 (DS1T - PostgreSQL 담당)
     2,
-    datetime('now', '-30 minutes')
+    datetime('now', '-30 minutes'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'PostgreSQL Connection Pool 최적화',
@@ -166,7 +191,10 @@ INSERT INTO tickets (
     180,
     2,  -- 이성인 (DS1T - PostgreSQL 담당)
     2,
-    NULL
+    NULL,
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'PostgreSQL 16 HA 구성 (Patroni + etcd)',
@@ -181,7 +209,10 @@ INSERT INTO tickets (
     NULL,
     6,  -- 김지은 (DS1T - PostgreSQL 담당)
     2,
-    NULL
+    NULL,
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'EDB Postgres Advanced 마이그레이션',
@@ -196,7 +227,10 @@ INSERT INTO tickets (
     NULL,
     3,  -- 김태관 (DS1T - EDB 담당)
     1,
-    datetime('now', '-2 hours')
+    datetime('now', '-2 hours'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'EDB Failover Manager 구성',
@@ -211,7 +245,10 @@ INSERT INTO tickets (
     NULL,
     4,  -- 김정환 (DS1T - EDB 담당)
     3,
-    datetime('now', '-1 hour')
+    datetime('now', '-1 hour'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'MongoDB Sharding 아키텍처 설계',
@@ -226,7 +263,10 @@ INSERT INTO tickets (
     NULL,
     5,  -- 최용규 (DS1T - MongoDB 담당)
     3,
-    NULL
+    NULL,
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'MongoDB Atlas Search 인덱스 최적화',
@@ -241,7 +281,10 @@ INSERT INTO tickets (
     NULL,
     7,  -- 강홍용 (DS1T - MongoDB 담당)
     4,
-    datetime('now', '-4 hours')
+    datetime('now', '-4 hours'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'SingleStore 클러스터 성능 분석',
@@ -256,7 +299,10 @@ INSERT INTO tickets (
     180,
     8,  -- 서원길 (DS1T - SingleStore 담당)
     2,
-    datetime('now', '-1 hour')
+    datetime('now', '-1 hour'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   ),
   (
     'SingleStore Columnstore 압축 최적화',
@@ -271,7 +317,10 @@ INSERT INTO tickets (
     NULL,
     9,  -- 김지현 (DS1T - SingleStore 담당)
     3,
-    NULL
+    NULL,
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days'),
+    date('now', '-' || ((strftime('%w', 'now') + 6) % 7) || ' days', '+6 days'),
+    strftime('%Y-W%W', 'now')
   );
 
 -- 샘플 코멘트 데이터
