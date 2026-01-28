@@ -59,6 +59,14 @@ const API = {
     getDashboardStats: async () => {
         const response = await axios.get('/api/dashboard/stats');
         return response.data;
+    },
+
+    changePassword: async (oldPassword, newPassword) => {
+        const response = await axios.put('/api/auth/password', {
+            oldPassword,
+            newPassword
+        });
+        return response.data;
     }
 };
 

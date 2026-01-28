@@ -1,7 +1,7 @@
 import API from './api.js';
 import { store } from './store.js';
 import { renderKanbanBoard } from './render.js';
-import { showNotification, formatDate, getYearWeek, STATUS_LABELS, DBMS_ICONS, getCurrentWeek } from './utils.js';
+import { showNotification, formatDate, getYearWeek, STATUS_LABELS, DBMS_ICONS, getCurrentWeek, formatDateTime } from './utils.js';
 
 // ==================== Data Loading ====================
 export async function loadEngineers() {
@@ -310,15 +310,7 @@ export async function openTicketDetail(ticketId) {
       }
     };
 
-    // Format Date Helper
-    const formatDateFull = (dateStr) => {
-      if (!dateStr) return '-';
-      const d = new Date(dateStr);
-      return d.toLocaleString('ko-KR', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit'
-      });
-    };
+
 
     contentEl.innerHTML = `
       <div class="space-y-6">
@@ -354,7 +346,7 @@ export async function openTicketDetail(ticketId) {
            </div>
         </div>
 
-        <!-- 2. Instance & SLA Info (If exists) -->
+            <!-- 2. Instance & SLA Info (If exists) -->
         ${ticket.instance_host ? `
         <div>
            <h3 class="text-sm font-bold text-gray-700 mb-2">인스턴스 정보</h3>
@@ -369,8 +361,13 @@ export async function openTicketDetail(ticketId) {
         <div>
            <h3 class="text-sm font-bold text-gray-700 mb-2">SLA 정보</h3>
            <div class="bg-gray-50 p-3 rounded text-sm grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <p><span class="text-gray-500">목표 시간:</span> ${ticket.sla_minutes}분</p>
-              ${ticket.started_at ? `<p><span class="text-gray-500">시작 시간:</span> ${new Date(ticket.started_at).toLocaleString('ko-KR')}</p>` : ''}
+              <div>
+                  <p><span class="text-gray-500">목표 시간:</span> ${ticket.sla_minutes}분</p>
+              </div>
+              <div class="space-y-1">
+                  ${ticket.started_at ? `<p><span class="text-gray-500">시작 시간:</span> ${formatDateTime(ticket.started_at)}</p>` : ''}
+                  ${ticket.resolved_at && ticket.status.toLowerCase() === 'done' ? `<p><span class="text-gray-500">종료 시간:</span> ${formatDateTime(ticket.resolved_at)}</p>` : ''}
+              </div>
            </div>
         </div>` : ''}
 
@@ -384,11 +381,11 @@ export async function openTicketDetail(ticketId) {
         <div class="grid grid-cols-2 gap-6 border-t pt-4">
            <div>
               <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">생성 일시</label>
-              <p class="font-medium text-gray-900 text-sm">${formatDateFull(ticket.created_at)}</p>
+              <p class="font-medium text-gray-900 text-sm">${formatDateTime(ticket.created_at)}</p>
            </div>
            <div>
               <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">최근 업데이트</label>
-              <p class="font-medium text-gray-900 text-sm">${formatDateFull(ticket.updated_at)}</p>
+              <p class="font-medium text-gray-900 text-sm">${formatDateTime(ticket.updated_at)}</p>
            </div>
         </div>
 
@@ -400,7 +397,7 @@ export async function openTicketDetail(ticketId) {
                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
                  <div class="flex items-center justify-between mb-2">
                     <span class="font-semibold text-sm text-blue-900">${comment.engineer_name}</span>
-                    <span class="text-xs text-blue-500">${new Date(comment.created_at).toLocaleString('ko-KR')}</span>
+                    <span class="text-xs text-blue-500">${formatDateTime(comment.created_at)}</span>
                  </div>
                  <p class="text-sm text-gray-800 whitespace-pre-wrap">${comment.content}</p>
                  <span class="text-xs text-blue-400 mt-2 inline-block px-1.5 py-0.5 bg-white rounded border border-blue-200">${comment.comment_type}</span>
@@ -439,6 +436,14 @@ export async function deleteTicket(ticketId) {
 
 export function openNewTicketModal() {
   document.getElementById('newTicketModal').classList.remove('hidden');
+
+  // Auto-select current user if available
+  if (window.CURRENT_USER_ENGINEER_ID) {
+    const select = document.getElementById('assignedToSelect');
+    if (select) {
+      select.value = window.CURRENT_USER_ENGINEER_ID;
+    }
+  }
 }
 
 export function closeNewTicketModal() {
@@ -970,7 +975,7 @@ export function enableEditMode(ticket) {
         <div>
            <label class="block text-sm font-medium text-gray-700">작업 카테고리</label>
            <select name="work_category" class="w-full border rounded px-3 py-2 mt-1">
-              ${['장애대응', '성능튜닝', '아키텍처설계', '정기점검', '패치/업그레이드'].map(c =>
+              ${['장애대응', '성능튜닝', '아키텍처설계', '정기점검', '패치/업그레이드', '기술 미팅', '마이그레이션', 'Documentation'].map(c =>
       `<option value="${c}" ${c === ticket.work_category ? 'selected' : ''}>${c}</option>`).join('')}
            </select>
         </div>
@@ -1035,3 +1040,75 @@ export async function saveTicketChanges(ticketId) {
     showNotification('수정 실패: ' + e.message, 'error');
   }
 }
+
+// ==================== User Info & Password Change ====================
+export function openUserInfoModal() {
+  const modal = document.getElementById('userInfoModal');
+  if (!modal) return;
+
+  // Use server-rendered username from window object
+  const username = window.CURRENT_USER_USERNAME || '-';
+
+  // Populate info
+  const userNameEl = document.getElementById('modalUserName');
+  if (userNameEl) userNameEl.textContent = window.CURRENT_USER_NAME || username;
+
+  const userEmailEl = document.getElementById('modalUserEmail');
+  if (userEmailEl) userEmailEl.textContent = username;
+
+  modal.classList.remove('hidden');
+}
+
+export function closeUserInfoModal() {
+  const modal = document.getElementById('userInfoModal');
+  if (modal) modal.classList.add('hidden');
+  const form = document.getElementById('changePasswordForm');
+  if (form) form.reset();
+}
+
+// Bind password change form
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('changePasswordForm');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const oldPassword = document.getElementById('oldPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('newPasswordConfirm').value;
+
+      if (newPassword !== confirmPassword) {
+        showNotification('새 비밀번호가 일치하지 않습니다.', 'error');
+        return;
+      }
+
+      try {
+        const response = await API.changePassword(oldPassword, newPassword);
+        // Handle standardized response format
+        if (response.success) {
+          const message = response.data?.message || '비밀번호가 성공적으로 변경되었습니다.';
+          showNotification(message, 'success');
+          closeUserInfoModal();
+        } else {
+          showNotification(response.error || '비밀번호 변경 실패', 'error');
+        }
+      } catch (error) {
+        console.error('비밀번호 변경 실패:', error);
+        // Extract error from standardized response or fallback
+        const errorMsg = error.response?.data?.error || error.response?.data?.message || '비밀번호 변경 실패';
+        showNotification(errorMsg, 'error');
+      }
+    });
+  }
+
+  // Bind User Profile Trigger
+  const profileTrigger = document.getElementById('userProfileTrigger');
+  if (profileTrigger) {
+    profileTrigger.addEventListener('click', () => {
+      openUserInfoModal();
+    });
+  }
+});
+
+// Expose to window for onclick
+window.openUserInfoModal = openUserInfoModal;
+window.closeUserInfoModal = closeUserInfoModal;

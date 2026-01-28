@@ -10,7 +10,7 @@ const createTicketSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional().nullable(),
   dbms_type: z.enum(['MySQL', 'PostgreSQL', 'MariaDB', 'MongoDB', 'Redis', 'SingleStore', 'HeatWave', 'EDB']),
-  work_category: z.enum(['장애대응', '성능튜닝', '아키텍처설계', '정기점검', '패치업그레이드', '패치/업그레이드']), // '패치업그레이드' handled for legacy match?
+  work_category: z.enum(['장애대응', '성능튜닝', '아키텍처설계', '정기점검', '패치업그레이드', '패치/업그레이드', '기술 미팅', '마이그레이션', 'Documentation']),
   severity: z.enum(['critical', 'high', 'medium', 'low']),
   instance_host: z.string().optional().nullable(),
   instance_env: z.enum(['prod', 'stg', 'dev']).optional().default('prod'),
@@ -83,7 +83,7 @@ app.get('/', async (c) => {
 
     // 날짜 범위 필터링 (start_date ~ end_date)
     if (startDate && endDate) {
-      query += ` AND t.week_start_date >= ? AND t.week_start_date <= ?`
+      query += ` AND date(t.created_at) >= ? AND date(t.created_at) <= ?`
       params.push(startDate, endDate)
     }
     // 기존 주차 필터링 (하위 호환성 유지)
@@ -189,13 +189,15 @@ app.patch('/:id/status', zValidator('json', updateStatusSchema), async (c) => {
   const params: any[] = [status]
 
   // in_progress로 변경시 started_at 설정
-  if (status === 'in_progress' && !currentTicket.started_at) {
+  if (status.toLowerCase() === 'in progress' && !currentTicket.started_at) {
     updates.push('started_at = CURRENT_TIMESTAMP')
   }
 
-  // done으로 변경시 resolved_at 설정
-  if (status === 'done') {
+  // done으로 변경시 resolved_at 설정, 그 외에는 초기화
+  if (status.toLowerCase() === 'done') {
     updates.push('resolved_at = CURRENT_TIMESTAMP')
+  } else {
+    updates.push('resolved_at = NULL')
   }
 
   updates.push('updated_at = CURRENT_TIMESTAMP')

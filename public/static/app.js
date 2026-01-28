@@ -4,6 +4,8 @@ import { store } from './js/store.js';
 
 // Expose actions to window for inline event handlers
 Object.assign(window, Actions);
+window.openUserInfoModal = Actions.openUserInfoModal;
+window.closeUserInfoModal = Actions.closeUserInfoModal;
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {

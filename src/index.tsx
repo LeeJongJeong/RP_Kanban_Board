@@ -1,31 +1,113 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { jwt, verify } from 'hono/jwt'
+import { getCookie, deleteCookie } from 'hono/cookie'
 import { serveStatic } from 'hono/cloudflare-workers'
 import { Bindings } from './bindings'
+import { getLoginPage, getRegisterPage } from './views/authPages'
+import { getAdminPage } from './views/adminPage'
 
 // Import Routes
+import auth from './routes/auth'
 import tickets from './routes/tickets'
 import engineers from './routes/engineers'
 import dashboard from './routes/dashboard'
+import admin from './routes/admin'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
 // CORS 설정
 app.use('/api/*', cors())
 
+// JWT Authentication for API
+app.use('/api/*', (c, next) => {
+    if (c.req.path.startsWith('/api/auth') || c.req.path.startsWith('/api/migrate-name')) {
+        return next()
+    }
+    const jwtMiddleware = jwt({
+        secret: c.env.JWT_SECRET,
+        cookie: 'auth_token',
+        alg: 'HS256'
+    })
+    return jwtMiddleware(c, next)
+})
+
 // Static files
 app.use('/static/*', serveStatic({ root: './public' }))
 
 // Mount Routes
+app.route('/api/auth', auth)
 app.route('/api/tickets', tickets)
 app.route('/api/engineers', engineers)
 app.route('/api/dashboard', dashboard)
+app.route('/api/admin', admin)
 
 // ==================== Frontend ====================
 
 
 
-app.get('/', (c) => {
+app.get('/login', (c) => c.html(getLoginPage()))
+app.get('/register', (c) => c.html(getRegisterPage()))
+
+// Admin page route (requires admin role)
+app.get('/admin', async (c) => {
+    const token = getCookie(c, 'auth_token')
+    if (!token) {
+        return c.redirect('/login')
+    }
+
+    try {
+        const payload = await verify(token, c.env.JWT_SECRET, 'HS256')
+        if (payload.role !== 'admin') {
+            return c.html('<h1>403 Forbidden</h1><p>관리자 권한이 필요합니다.</p>', 403)
+        }
+
+        return c.html(getAdminPage(payload))
+    } catch (e) {
+        return c.redirect('/login')
+    }
+})
+
+app.get('/', async (c) => {
+    const token = getCookie(c, 'auth_token')
+    if (!token) {
+        return c.redirect('/login')
+    }
+
+    let currentUserEngineerId = null;
+    let currentUserEngineerName = null;
+    let currentUserRole = 'user';
+    let currentUsername = '';
+    try {
+        const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
+        if (payload && payload.sub) {
+            currentUserRole = payload.role || 'user';
+            currentUsername = payload.sub;
+
+            // Fetch user details including display_name and linked engineer info
+            const user: any = await c.env.DB.prepare(`
+                SELECT u.engineer_id, u.display_name, e.name as engineer_name
+                FROM users u
+                LEFT JOIN engineers e ON u.engineer_id = e.id
+                WHERE u.username = ?
+            `)
+                .bind(payload.sub)
+                .first();
+
+            if (user) {
+                currentUserEngineerId = user.engineer_id;
+                currentUserEngineerName = user.display_name || user.engineer_name || payload.sub;
+            } else {
+                // Fallback: use username if user record not found (should be rare)
+                currentUserEngineerName = payload.sub;
+            }
+        }
+    } catch (e) {
+        console.error("Auth check failed in root handler", e);
+        deleteCookie(c, 'auth_token');
+        return c.redirect('/login');
+    }
+
     return c.html(`
     <!DOCTYPE html>
     <html lang="ko">
@@ -33,6 +115,14 @@ app.get('/', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>RP Kanban Board</title>
+        <script>
+            window.CURRENT_USER_ENGINEER_ID = ${currentUserEngineerId};
+            window.CURRENT_USER_NAME = "${currentUserEngineerName || ''}";
+            window.CURRENT_USER_ROLE = "${currentUserRole}";
+            window.CURRENT_USER_USERNAME = "${currentUsername}";
+            // Debug info
+            console.log('Current User:', "${currentUsername}", 'Name:', "${currentUserEngineerName}", 'Role:', "${currentUserRole}");
+        </script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/style.css" rel="stylesheet">
@@ -139,16 +229,40 @@ app.get('/', (c) => {
                                 <span>새 티켓</span>
                             </button>
                         </div>
-                        <div class="flex items-center space-x-4">
-                            <select id="viewMode" onchange="changeView()" class="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                         <div class="flex items-center space-x-4">
+                            <!-- User Name Display -->
+                            ${currentUserEngineerName ? `
+                            <div id="userProfileTrigger" onclick="openUserProfile()" class="flex items-center space-x-2 text-gray-700 font-bold text-base mr-2 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition">
+                                <i class="fas fa-user-circle text-gray-500 text-xl"></i>
+                                <span>${currentUserEngineerName}</span>
+                            </div>
+                            ` : ''}
+
+                            <select id="viewMode" onchange="changeView()" class="border rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 bg-white shadow-sm">
                                 <option value="status">상태별 보기</option>
                                 <option value="engineer">엔지니어별 보기</option>
                                 <option value="dbms">DBMS별 보기</option>
                             </select>
-                            <button onclick="toggleDashboard()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
+
+                            <button onclick="toggleDashboard()" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg flex items-center space-x-2 transition shadow-sm font-medium">
                                 <i class="fas fa-chart-pie"></i>
                                 <span>대시보드</span>
                             </button>
+
+                            ${currentUserRole === 'admin' ? `
+                            <a href="/admin" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg flex items-center space-x-2 transition shadow-sm font-medium">
+                                <i class="fas fa-user-shield"></i>
+                                <span>관리자</span>
+                            </a>
+                            ` : ''}
+
+                            <!-- Divider -->
+                            <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+                            <a href="/api/auth/logout" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg flex items-center space-x-2 transition shadow-sm font-medium">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>로그아웃</span>
+                            </a>
                         </div>
                     </div>
                     
@@ -176,6 +290,10 @@ app.get('/', (c) => {
                             </button>
                         </div>
                         
+                        <a href="/api/auth/logout" class="block w-full bg-red-500 hover:bg-red-600 text-white text-center px-3 py-2 rounded-lg transition text-sm">
+                            <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+                        </a>
+                        
                         <select id="viewModeMobile" onchange="changeView()" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                             <option value="status">상태별 보기</option>
                             <option value="engineer">엔지니어별 보기</option>
@@ -184,6 +302,51 @@ app.get('/', (c) => {
                     </div>
                 </div>
             </header>
+
+            <!-- User Info & Password Change Modal -->
+            <div id="userInfoModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[100]">
+                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">내 정보</h3>
+                        <button onclick="closeUserProfile()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <!-- Info Section -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="mb-2">
+                                <label class="block text-xs text-gray-500">이름 (Display Name)</label>
+                                <p class="font-medium text-gray-800" id="modalUserName">-</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500">아이디 (Username)</label>
+                                <p class="font-medium text-gray-800" id="modalUserEmail">-</p>
+                            </div>
+                        </div>
+
+                        <!-- Password Change Form -->
+                        <div class="border-t pt-4">
+                            <h4 class="text-sm font-bold text-gray-700 mb-3">비밀번호 변경</h4>
+                            <form id="changePasswordForm" class="space-y-3">
+                                <div>
+                                    <input type="password" id="oldPassword" placeholder="현재 비밀번호" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                                </div>
+                                <div>
+                                    <input type="password" id="newPassword" placeholder="새 비밀번호" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                                </div>
+                                <div>
+                                    <input type="password" id="newPasswordConfirm" placeholder="새 비밀번호 확인" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                                </div>
+                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition text-sm">
+                                    비밀번호 변경
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- 주차 선택 모달 -->
             <div id="weekPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center px-4 py-8 sm:py-12 overflow-y-auto" onclick="if(event.target === this) closeWeekPicker()">
@@ -273,6 +436,9 @@ app.get('/', (c) => {
                                         <option value="아키텍처설계">아키텍처설계</option>
                                         <option value="정기점검">정기점검</option>
                                         <option value="패치업그레이드">패치/업그레이드</option>
+                                        <option value="기술 미팅">기술 미팅</option>
+                                        <option value="마이그레이션">마이그레이션</option>
+                                        <option value="Documentation">Documentation</option>
                                     </select>
                                 </div>
                             </div>
@@ -398,6 +564,76 @@ app.get('/', (c) => {
         
         <!-- Frontend Modular Scripts will go here later, for now keeping legacy app.js -->
         <script src="/static/app.js" type="module"></script>
+        
+        <!-- Robust Inline Script for Modal -->
+        <script>
+            // Define globally to ensure availability
+            // RENAMING to openUserProfile to avoid collision with app.js modules
+            window.openUserProfile = function() {
+                console.log('openUserProfile (inline) triggered');
+                var modal = document.getElementById('userInfoModal');
+                if (!modal) {
+                    console.error('Modal element not found');
+                    return;
+                }
+                
+                // Extract username from JWT
+                var getCookie = function(name) {
+                    var value = '; ' + document.cookie;
+                    var parts = value.split('; ' + name + '=');
+                    if (parts.length === 2) return parts.pop().split(';').shift();
+                };
+                
+                var token = getCookie('auth_token');
+                var username = '-';
+                
+                if (token) {
+                    try {
+                        // Decode JWT payload (middle part)
+                        var payload = JSON.parse(atob(token.split('.')[1]));
+                        username = payload.sub || '-';
+                    } catch (e) {
+                        console.error('Failed to decode JWT:', e);
+                    }
+                }
+                
+                // Populate info
+                var userNameEl = document.getElementById('modalUserName');
+                if (userNameEl) {
+                    userNameEl.textContent = window.CURRENT_USER_NAME || username;
+                }
+                
+                var userEmailEl = document.getElementById('modalUserEmail');
+                if (userEmailEl) {
+                    userEmailEl.textContent = username;
+                }
+
+                modal.classList.remove('hidden');
+            };
+            
+            // Backward compatibility just in case
+            window.openUserInfoModal = window.openUserProfile;
+
+            window.closeUserProfile = function() {
+                var modal = document.getElementById('userInfoModal');
+                if (modal) modal.classList.add('hidden');
+                
+                var form = document.getElementById('changePasswordForm');
+                if (form) form.reset();
+            };
+            window.closeUserInfoModal = window.closeUserProfile;
+
+            // Double check event binding on load
+            document.addEventListener('DOMContentLoaded', function() {
+                var trigger = document.getElementById('userProfileTrigger');
+                if (trigger) {
+                    trigger.addEventListener('click', window.openUserProfile);
+                    console.log('UserProfileTrigger bound successfully');
+                } else {
+                    console.warn('UserProfileTrigger not found on load');
+                }
+            });
+        </script>
     </body>
     </html>
   `)

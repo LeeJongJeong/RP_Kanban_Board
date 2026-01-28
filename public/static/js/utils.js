@@ -80,11 +80,33 @@ export function showNotification(message, type = 'success') {
     }, 3000);
 }
 
+// Helper to parse DB timestamp as UTC
+function parseUTCDate(dateStr) {
+    if (!dateStr) return null;
+    // If string date looks like 'YYYY-MM-DD HH:MM:SS' without timezone, assume UTC
+    if (typeof dateStr === 'string' && !dateStr.includes('Z') && !dateStr.includes('+')) {
+        return new Date(dateStr.replace(' ', 'T') + 'Z');
+    }
+    return new Date(dateStr);
+}
+
+export function formatDateTime(dateStr) {
+    const d = parseUTCDate(dateStr);
+    if (!d) return '-';
+    return d.toLocaleString('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
 export function getSLAStatus(ticket) {
     if (!ticket.sla_minutes || ticket.status === 'done') return null;
 
     const now = new Date();
-    const startTime = ticket.started_at ? new Date(ticket.started_at) : new Date(ticket.created_at);
+    const startTime = parseUTCDate(ticket.started_at || ticket.created_at);
+
+    if (!startTime) return null;
+
     const elapsedMinutes = (now - startTime) / 1000 / 60;
     const remainingMinutes = ticket.sla_minutes - elapsedMinutes;
 

@@ -12,5 +12,10 @@
       "database_name": "webapp-production",
       "database_id": "local-dev-database"
     }
-  ]
+  ],
+  "vars": {
+    // 환경 변수는 로컬에서는 .dev.vars 파일에서 자동으로 로드됩니다.
+    // 프로덕션 배포 시에는 Cloudflare Workers 대시보드에서 환경 변수를 설정하세요.
+    // 필요한 환경 변수: JWT_SECRET
+  }
 }
