@@ -39,8 +39,8 @@ export const getAdminPage = (currentUser: any) => `
                         <tr>
                             <th class="p-3 text-left font-semibold">아이디</th>
                             <th class="p-3 text-left font-semibold">이름</th>
+                            <th class="p-3 text-left font-semibold">직급</th>
                             <th class="p-3 text-left font-semibold">역할</th>
-                            <th class="p-3 text-left font-semibold">연결된 엔지니어</th>
                             <th class="p-3 text-left font-semibold">상태</th>
                             <th class="p-3 text-left font-semibold">생성일</th>
                             <th class="p-3 text-center font-semibold">작업</th>
@@ -81,6 +81,11 @@ export const getAdminPage = (currentUser: any) => `
                         <label class="block text-sm font-medium mb-1">이름 (Display Name)</label>
                         <input type="text" id="displayName" placeholder="이름을 입력하세요" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">직급</label>
+                        <input type="text" id="jobTitle" placeholder="예: 팀장, 수석, 매니저" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
                     
                     <div id="passwordField">
                         <label class="block text-sm font-medium mb-1">비밀번호 *</label>
@@ -96,12 +101,7 @@ export const getAdminPage = (currentUser: any) => `
                         </select>
                     </div>
                     
-                    <div>
-                        <label class="block text-sm font-medium mb-1">연결된 엔지니어</label>
-                        <select id="engineerId" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="">없음</option>
-                        </select>
-                    </div>
+
                     
                     <div class="flex items-center">
                         <input type="checkbox" id="isActive" checked class="mr-2">

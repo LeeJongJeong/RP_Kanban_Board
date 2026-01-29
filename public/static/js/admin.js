@@ -6,33 +6,13 @@ let editingUserId = null;
 
 // Load users on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadEngineers();
+    // await loadEngineers(); // No longer needed
     await loadUsers();
 });
 
-// Load engineers for dropdown
-async function loadEngineers() {
-    try {
-        const response = await axios.get('/api/admin/engineers');
-        if (response.data.success) {
-            engineers = response.data.data;
-            updateEngineerDropdown();
-        }
-    } catch (error) {
-        console.error('Failed to load engineers:', error);
-    }
-}
 
-function updateEngineerDropdown() {
-    const select = document.getElementById('engineerId');
-    select.innerHTML = '<option value="">없음</option>';
-    engineers.forEach(eng => {
-        const option = document.createElement('option');
-        option.value = eng.id;
-        option.textContent = `${eng.name} (${eng.email})`;
-        select.appendChild(option);
-    });
-}
+// function updateEngineerDropdown() { ... } // Removed
+
 
 // Load users
 async function loadUsers() {
@@ -71,7 +51,7 @@ function renderUsers() {
           ${user.role === 'admin' ? '관리자' : '사용자'}
         </span>
       </td>
-      <td class="p-3 text-sm text-gray-500">${user.engineer_name || '-'}</td>
+      <td class="p-3">${user.job_title || '-'}</td>
       <td class="p-3">
         <span class="px-2 py-1 rounded text-sm ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
           ${user.is_active ? '활성' : '비활성'}
@@ -103,6 +83,7 @@ function openCreateUserModal() {
     document.getElementById('userId').value = '';
     document.getElementById('username').disabled = false;
     document.getElementById('displayName').value = '';
+    document.getElementById('jobTitle').value = '';
     document.getElementById('passwordField').classList.remove('hidden');
     document.getElementById('password').required = true;
     document.getElementById('userModal').classList.remove('hidden');
@@ -119,8 +100,9 @@ function editUser(userId) {
     document.getElementById('username').value = user.username;
     document.getElementById('username').disabled = true;
     document.getElementById('displayName').value = user.display_name || '';
+    document.getElementById('jobTitle').value = user.job_title || '';
     document.getElementById('role').value = user.role;
-    document.getElementById('engineerId').value = user.engineer_id || '';
+    // document.getElementById('engineerId').value = user.engineer_id || '';
     document.getElementById('isActive').checked = user.is_active === 1;
 
     // Hide password field when editing
@@ -142,9 +124,10 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
 
     const username = document.getElementById('username').value;
     const displayName = document.getElementById('displayName').value;
+    const jobTitle = document.getElementById('jobTitle').value;
     const password = document.getElementById('password').value;
     const role = document.getElementById('role').value;
-    const engineerId = document.getElementById('engineerId').value || null;
+    // const engineerId = document.getElementById('engineerId').value || null; // Removed
     const isActive = document.getElementById('isActive').checked ? 1 : 0;
 
     try {
@@ -152,9 +135,10 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             // Update user
             await axios.put(`/api/admin/users/${editingUserId}`, {
                 role,
-                engineer_id: engineerId,
+                // engineer_id: engineerId,
                 is_active: isActive,
-                display_name: displayName
+                display_name: displayName,
+                job_title: jobTitle
             });
             showSuccess('사용자가 수정되었습니다.');
         } else {
@@ -163,8 +147,9 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 username,
                 password,
                 role,
-                engineer_id: engineerId,
-                display_name: displayName
+                // engineer_id: engineerId,
+                display_name: displayName,
+                job_title: jobTitle
             });
             showSuccess('사용자가 생성되었습니다.');
         }

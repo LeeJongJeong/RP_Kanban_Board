@@ -21,6 +21,7 @@ app.get('/users', async (c) => {
         u.created_at,
         u.engineer_id,
         u.display_name,
+        u.job_title,
         e.name as engineer_name, 
         e.email as engineer_email
       FROM users u
@@ -39,7 +40,7 @@ app.get('/users', async (c) => {
 app.post('/users', async (c) => {
     try {
         const body = await c.req.json()
-        const { username, password, role = 'user', engineer_id, display_name } = body
+        const { username, password, role = 'user', display_name, job_title } = body
 
         if (!username || !password) {
             return c.json(errorResponse('Username and password required'), 400)
@@ -57,11 +58,33 @@ app.post('/users', async (c) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10)
 
+        // Auto-create engineer record
+        let engineerId = null;
+        if (display_name && job_title) {
+            const engineerName = `${display_name} ${job_title}`;
+            const email = `${username}@company.com`; // Default email format
+
+            try {
+                const result = await c.env.DB.prepare(`
+                    INSERT INTO engineers (name, email, role, is_active)
+                    VALUES (?, ?, ?, 1)
+                    RETURNING id
+                `).bind(engineerName, email, 'engineer').first<{ id: number }>();
+
+                if (result) {
+                    engineerId = result.id;
+                }
+            } catch (engError) {
+                console.error('Failed to auto-create engineer:', engError);
+                // Continue creating user even if engineer creation fails (optional strategy)
+            }
+        }
+
         // Insert new user
         await c.env.DB.prepare(`
-      INSERT INTO users (username, password, role, engineer_id, is_active, display_name)
-      VALUES (?, ?, ?, ?, 1, ?)
-    `).bind(username, hashedPassword, role, engineer_id || null, display_name || null).run()
+      INSERT INTO users (username, password, role, engineer_id, is_active, display_name, job_title)
+      VALUES (?, ?, ?, ?, 1, ?, ?)
+    `).bind(username, hashedPassword, role, engineerId, display_name || null, job_title || null).run()
 
         return c.json(successResponse({ message: 'User created successfully' }), 201)
     } catch (e) {
@@ -75,13 +98,16 @@ app.put('/users/:id', async (c) => {
     try {
         const id = c.req.param('id')
         const body = await c.req.json()
-        const { role, engineer_id, is_active, display_name } = body
+        const { role, is_active, display_name, job_title } = body
+
+        // Note: We don't update engineer link here to keep it simple, 
+        // as the requirement was mainly about creation flow.
 
         await c.env.DB.prepare(`
       UPDATE users
-      SET role = ?, engineer_id = ?, is_active = ?, display_name = ?
+      SET role = ?, is_active = ?, display_name = ?, job_title = ?
       WHERE id = ?
-    `).bind(role, engineer_id || null, is_active, display_name || null, id).run()
+    `).bind(role, is_active, display_name || null, job_title || null, id).run()
 
         return c.json(successResponse({ message: 'User updated successfully' }))
     } catch (e) {

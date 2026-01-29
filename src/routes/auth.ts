@@ -180,8 +180,7 @@ app.post('/login', async (c) => {
             httpOnly: true,
             secure: true,
             sameSite: 'Strict',
-            path: '/',
-            maxAge: 60 * 60 * 24
+            path: '/'
         })
 
         return c.json(successResponse({ message: 'Login successful' }))

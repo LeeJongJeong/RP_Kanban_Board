@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
 import { Bindings } from '../bindings'
+import { TicketService } from '../services/TicketService'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -48,55 +49,18 @@ app.get('/', async (c) => {
       return c.json({ error: 'Database binding missing' }, 500)
     }
 
-    const status = c.req.query('status')
-    const assignedTo = c.req.query('assigned_to')
-    const dbmsType = c.req.query('dbms_type')
-    const weekStartDate = c.req.query('week_start_date') // Legacy: specific week start
-    const startDate = c.req.query('start_date')          // Range start
-    const endDate = c.req.query('end_date')              // Range end
-
-    let query = `
-        SELECT 
-          t.*,
-          e.name as assigned_to_name,
-          e.email as assigned_to_email
-        FROM tickets t
-        LEFT JOIN engineers e ON t.assigned_to = e.id
-        WHERE 1=1
-      `
-    const params: any[] = []
-
-    if (status) {
-      query += ` AND t.status = ?`
-      params.push(status)
+    const service = new TicketService(DB)
+    const filters = {
+      status: c.req.query('status'),
+      assigned_to: c.req.query('assigned_to'),
+      dbms_type: c.req.query('dbms_type'),
+      week_start_date: c.req.query('week_start_date'),
+      start_date: c.req.query('start_date'),
+      end_date: c.req.query('end_date')
     }
 
-    if (assignedTo) {
-      query += ` AND t.assigned_to = ?`
-      params.push(assignedTo)
-    }
-
-    if (dbmsType) {
-      query += ` AND t.dbms_type = ?`
-      params.push(dbmsType)
-    }
-
-    // 날짜 범위 필터링 (start_date ~ end_date)
-    if (startDate && endDate) {
-      query += ` AND date(t.created_at) >= ? AND date(t.created_at) <= ?`
-      params.push(startDate, endDate)
-    }
-    // 기존 주차 필터링 (하위 호환성 유지)
-    else if (weekStartDate) {
-      query += ` AND t.week_start_date = ?`
-      params.push(weekStartDate)
-    }
-
-    query += ` ORDER BY t.priority ASC, t.created_at DESC`
-
-    const result = await DB.prepare(query).bind(...params).all()
-
-    return c.json({ tickets: result.results })
+    const tickets = await service.findAll(filters)
+    return c.json({ tickets })
   } catch (error: any) {
     console.error('Error fetching tickets:', error)
     return c.json({ error: 'Internal Server Error' }, 500)
@@ -107,35 +71,19 @@ app.get('/', async (c) => {
 app.get('/:id', async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
+  const service = new TicketService(DB)
 
-  const ticket = await DB.prepare(`
-    SELECT 
-      t.*,
-      e.name as assigned_to_name,
-      e.email as assigned_to_email
-    FROM tickets t
-    LEFT JOIN engineers e ON t.assigned_to = e.id
-    WHERE t.id = ?
-  `).bind(ticketId).first()
+  const ticket = await service.findById(ticketId)
 
   if (!ticket) {
     return c.json({ error: 'Ticket not found' }, 404)
   }
 
-  // 코멘트 조회
-  const comments = await DB.prepare(`
-    SELECT 
-      c.*,
-      e.name as engineer_name
-    FROM comments c
-    JOIN engineers e ON c.engineer_id = e.id
-    WHERE c.ticket_id = ?
-    ORDER BY c.created_at DESC
-  `).bind(ticketId).all()
+  const comments = await service.getComments(ticketId)
 
   return c.json({
     ticket,
-    comments: comments.results
+    comments
   })
 })
 
@@ -143,6 +91,7 @@ app.get('/:id', async (c) => {
 app.post('/', zValidator('json', createTicketSchema), async (c) => {
   const { DB } = c.env
   const body = c.req.valid('json')
+  const service = new TicketService(DB)
 
   const {
     title, description, dbms_type, work_category, severity,
@@ -150,22 +99,26 @@ app.post('/', zValidator('json', createTicketSchema), async (c) => {
     sla_minutes, assigned_to, priority, week_start_date, week_end_date, year_week
   } = body
 
-  const result = await DB.prepare(`
-    INSERT INTO tickets (
-      title, description, status, dbms_type, work_category, severity,
-      instance_host, instance_env, instance_version, sla_minutes,
-      assigned_to, priority, week_start_date, week_end_date, year_week
-    ) VALUES (?, ?, 'todo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    title, description || '', dbms_type, work_category, severity,
-    instance_host || null, instance_env || 'prod', instance_version || null,
-    sla_minutes || null, assigned_to || null, priority || 3,
-    week_start_date || null, week_end_date || null, year_week || null
-  ).run()
+  const ticket_id = await service.create({
+    title,
+    description: description ?? undefined,
+    dbms_type,
+    work_category,
+    severity,
+    instance_host: instance_host ?? undefined,
+    instance_env: instance_env ?? undefined,
+    instance_version: instance_version ?? undefined,
+    sla_minutes: sla_minutes ?? undefined,
+    assigned_to: assigned_to ?? undefined,
+    priority: priority ?? undefined,
+    week_start_date: week_start_date ?? undefined,
+    week_end_date: week_end_date ?? undefined,
+    year_week: year_week ?? undefined
+  })
 
   return c.json({
     success: true,
-    ticket_id: result.meta.last_row_id
+    ticket_id
   }, 201)
 })
 
@@ -174,46 +127,13 @@ app.patch('/:id/status', zValidator('json', updateStatusSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
   const { status, changed_by } = c.req.valid('json')
+  const service = new TicketService(DB)
 
-  // 현재 티켓 상태 조회
-  const currentTicket = await DB.prepare(`
-    SELECT status FROM tickets WHERE id = ?
-  `).bind(ticketId).first() as any
+  const success = await service.updateStatus(ticketId, status, changed_by)
 
-  if (!currentTicket) {
+  if (!success) {
     return c.json({ error: 'Ticket not found' }, 404)
   }
-
-  // 상태 업데이트
-  const updates: string[] = ['status = ?']
-  const params: any[] = [status]
-
-  // in_progress로 변경시 started_at 설정
-  if (status.toLowerCase() === 'in progress' && !currentTicket.started_at) {
-    updates.push('started_at = CURRENT_TIMESTAMP')
-  }
-
-  // done으로 변경시 resolved_at 설정, 그 외에는 초기화
-  if (status.toLowerCase() === 'done') {
-    updates.push('resolved_at = CURRENT_TIMESTAMP')
-  } else {
-    updates.push('resolved_at = NULL')
-  }
-
-  updates.push('updated_at = CURRENT_TIMESTAMP')
-  params.push(ticketId)
-
-  await DB.prepare(`
-    UPDATE tickets 
-    SET ${updates.join(', ')}
-    WHERE id = ?
-  `).bind(...params).run()
-
-  // 히스토리 기록
-  await DB.prepare(`
-    INSERT INTO ticket_history (ticket_id, changed_by, field_name, old_value, new_value)
-    VALUES (?, ?, 'status', ?, ?)
-  `).bind(ticketId, changed_by, currentTicket.status, status).run()
 
   return c.json({ success: true })
 })
@@ -223,33 +143,13 @@ app.patch('/:id/assign', zValidator('json', assignSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
   const { assigned_to, changed_by } = c.req.valid('json')
+  const service = new TicketService(DB)
 
-  // 현재 담당자 조회
-  const currentTicket = await DB.prepare(`
-    SELECT assigned_to FROM tickets WHERE id = ?
-  `).bind(ticketId).first() as any
+  const success = await service.assign(ticketId, assigned_to, changed_by)
 
-  if (!currentTicket) {
+  if (!success) {
     return c.json({ error: 'Ticket not found' }, 404)
   }
-
-  // 담당자 업데이트
-  await DB.prepare(`
-    UPDATE tickets 
-    SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).bind(assigned_to || null, ticketId).run()
-
-  // 히스토리 기록
-  await DB.prepare(`
-    INSERT INTO ticket_history (ticket_id, changed_by, field_name, old_value, new_value)
-    VALUES (?, ?, 'assigned_to', ?, ?)
-  `).bind(
-    ticketId,
-    changed_by,
-    currentTicket.assigned_to?.toString() || 'null',
-    assigned_to?.toString() || 'null'
-  ).run()
 
   return c.json({ success: true })
 })
@@ -259,33 +159,9 @@ app.put('/:id', async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
   const body = await c.req.json()
+  const service = new TicketService(DB)
 
-  const {
-    title, description, severity, priority,
-    instance_host, instance_env, instance_version,
-    sla_minutes, dbms_type, work_category
-  } = body
-
-  await DB.prepare(`
-    UPDATE tickets 
-    SET 
-      title = ?,
-      description = ?,
-      severity = ?,
-      priority = ?,
-      instance_host = ?,
-      instance_env = ?,
-      instance_version = ?,
-      sla_minutes = ?,
-      dbms_type = ?,
-      work_category = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).bind(
-    title, description, severity, priority,
-    instance_host, instance_env, instance_version,
-    sla_minutes, dbms_type, work_category, ticketId
-  ).run()
+  await service.update(ticketId, body)
 
   return c.json({ success: true })
 })
@@ -294,8 +170,9 @@ app.put('/:id', async (c) => {
 app.delete('/:id', async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
+  const service = new TicketService(DB)
 
-  await DB.prepare(`DELETE FROM tickets WHERE id = ?`).bind(ticketId).run()
+  await service.delete(ticketId)
 
   return c.json({ success: true })
 })
@@ -305,15 +182,13 @@ app.post('/:id/comments', zValidator('json', commentSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
   const { engineer_id, content, comment_type } = c.req.valid('json')
+  const service = new TicketService(DB)
 
-  const result = await DB.prepare(`
-    INSERT INTO comments (ticket_id, engineer_id, content, comment_type)
-    VALUES (?, ?, ?, ?)
-  `).bind(ticketId, engineer_id, content, comment_type).run()
+  const comment_id = await service.addComment(ticketId, engineer_id, content, comment_type)
 
   return c.json({
     success: true,
-    comment_id: result.meta.last_row_id
+    comment_id
   }, 201)
 })
 
