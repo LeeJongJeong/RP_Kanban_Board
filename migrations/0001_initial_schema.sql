@@ -1,3 +1,8 @@
+-- ============================================
+-- Migration 0001: Initial Schema
+-- 기본 테이블 생성 (engineers, tickets, comments, ticket_history)
+-- ============================================
+
 -- Engineers (엔지니어 정보)
 CREATE TABLE IF NOT EXISTS engineers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,6 +44,11 @@ CREATE TABLE IF NOT EXISTS tickets (
   -- 우선순위
   priority INTEGER DEFAULT 3, -- 1: 최우선, 2: 높음, 3: 보통, 4: 낮음
   
+  -- 주차 관리 필드
+  week_start_date DATE, -- 해당 주의 시작일 (월요일)
+  week_end_date DATE,   -- 해당 주의 종료일 (일요일)
+  year_week TEXT,       -- 연도-주차 (예: '2026-W04')
+  
   -- 타임스탬프
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -79,5 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_tickets_dbms_type ON tickets(dbms_type);
 CREATE INDEX IF NOT EXISTS idx_tickets_severity ON tickets(severity);
 CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at);
+CREATE INDEX IF NOT EXISTS idx_tickets_week_start_date ON tickets(week_start_date);
+CREATE INDEX IF NOT EXISTS idx_tickets_year_week ON tickets(year_week);
 CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_ticket_history_ticket_id ON ticket_history(ticket_id);

@@ -27,6 +27,14 @@ export const getLoginPage = () => `
                 <input type="password" id="password" required class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
             <div id="errorMessage" class="hidden text-red-500 text-sm text-center"></div>
+            
+            <div class="flex items-center mb-4">
+                <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer">
+                <label for="remember-me" class="ml-2 block text-sm text-gray-700 cursor-pointer">
+                    로그인 상태 유지
+                </label>
+            </div>
+
             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
                 로그인
             </button>
@@ -42,10 +50,11 @@ export const getLoginPage = () => `
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('remember-me').checked;
             const errorDiv = document.getElementById('errorMessage');
 
             try {
-                const response = await axios.post('/api/auth/login', { username, password });
+                const response = await axios.post('/api/auth/login', { username, password, rememberMe });
                 // Handle standardized response format
                 if (response.data.success) {
                     window.location.href = '/';

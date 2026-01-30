@@ -871,7 +871,15 @@ export function handlePeriodChange(period) {
 
   if (period === 'custom') {
     const modal = document.getElementById('dateRangeModal');
-    if (modal) modal.classList.remove('hidden');
+    console.log('Custom period selected, modal element:', modal);
+    if (modal) {
+      modal.classList.remove('hidden');
+      // Ensure modal is visible by checking parent visibility
+      modal.style.display = 'block';
+    } else {
+      console.error('dateRangeModal not found in DOM');
+      showNotification('날짜 선택 모달을 찾을 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+    }
     return; // Wait for user custom input
   }
 
@@ -904,7 +912,10 @@ export function handlePeriodChange(period) {
 
 export function closeDateRangeModal() {
   const modal = document.getElementById('dateRangeModal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = '';
+  }
 }
 
 export function applyCustomDate() {

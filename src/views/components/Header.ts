@@ -20,7 +20,7 @@ export const Header = (currentUserEngineerName: string | null, currentUserRole: 
                 <div class="flex items-center space-x-4">
                     <!-- 기간 선택 -->
                     <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2 relative">
-                        <i class="fas fa-calendar-alt text-gray-600"></i>
+                        <i class="fas fa-calendar-alt text-gray-600 cursor-pointer hover:text-blue-600 transition-colors" onclick="handlePeriodChange('custom')" title="기간 직접 선택"></i>
                         <select id="periodSelector" onchange="handlePeriodChange(this.value)" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer font-medium text-gray-700">
                             <option value="current">이번 주</option>
                             <option value="1m">최근 1달</option>
@@ -94,7 +94,7 @@ export const Header = (currentUserEngineerName: string | null, currentUserRole: 
             <div id="mobileMenu" class="hidden sm:hidden mt-3 space-y-2">
                 <!-- 주차/기간 선택 (Unified with Desktop) -->
                 <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
-                    <i class="fas fa-calendar-alt text-gray-600 text-sm"></i>
+                    <i class="fas fa-calendar-alt text-gray-600 text-sm cursor-pointer hover:text-blue-600" onclick="handlePeriodChange('custom')"></i>
                     <select id="periodSelectorMobile" onchange="handlePeriodChange(this.value)" class="bg-transparent border-none focus:ring-0 outline-none cursor-pointer text-sm font-medium text-gray-700 flex-1">
                         <option value="current">이번 주</option>
                         <option value="1m">최근 1달</option>

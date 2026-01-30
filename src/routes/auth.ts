@@ -125,7 +125,7 @@ app.post('/register', async (c) => {
 app.post('/login', async (c) => {
     try {
         const body = await c.req.json()
-        const { username, password } = body
+        const { username, password, rememberMe } = body
 
         if (!username || !password) {
             return c.json(errorResponse('Username and password required'), 400)
@@ -165,6 +165,9 @@ app.post('/login', async (c) => {
         let token: string;
         try {
             const displayName = user.display_name || user.engineer_name || user.username;
+            // 만약 rememberMe가 true면 24시간, false면 4시간(세션 길이에 맞춰) 등으로 설정 가능하나
+            // 토큰 자체의 유효기간과 쿠키의 수명은 별개로 관리하는 것이 좋음.
+            // 여기서는 토큰 유효기간을 24시간으로 통일하되, 쿠키만 삭제되면 접근 불가.
             token = await sign({
                 sub: user.username,
                 role: user.role || 'user',
@@ -176,12 +179,21 @@ app.post('/login', async (c) => {
             return c.json(errorResponse('Failed to generate authentication token'), 500)
         }
 
-        setCookie(c, 'auth_token', token, {
+        // 쿠키 옵션 설정
+        const cookieOptions: any = {
             httpOnly: true,
             secure: true,
             sameSite: 'Strict',
             path: '/'
-        })
+        };
+
+        // rememberMe가 true일 때만 Max-Age 설정 (Persistent Cookie)
+        // false이면 Max-Age 설정 안 함 (Session Cookie - 브라우저 종료 시 삭제)
+        if (rememberMe) {
+            cookieOptions.maxAge = 60 * 60 * 24; // 24 hours
+        }
+
+        setCookie(c, 'auth_token', token, cookieOptions)
 
         return c.json(successResponse({ message: 'Login successful' }))
     } catch (e) {

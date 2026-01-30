@@ -320,4 +320,11 @@ INSERT INTO ticket_history (ticket_id, changed_by, field_name, old_value, new_va
   (11, 3, 'status', 'todo', 'in_progress'),
   (12, 4, 'status', 'in_progress', 'review'),
   (14, 7, 'status', 'in_progress', 'review'),
-  (15, 8, 'status', 'todo', 'in_progress');
+(15, 8, 'status', 'todo', 'in_progress');
+
+-- ============================================
+-- 기본 관리자 계정
+-- ============================================
+-- 비밀번호: admin123 (bcrypt 해시)
+INSERT INTO users (username, password, role, display_name, job_title, is_active) VALUES 
+  ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin', '시스템 관리자', '관리자', 1);
