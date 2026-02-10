@@ -325,6 +325,174 @@ INSERT INTO ticket_history (ticket_id, changed_by, field_name, old_value, new_va
 -- ============================================
 -- 기본 관리자 계정
 -- ============================================
--- 비밀번호: admin123 (bcrypt 해시)
+-- 비밀번호: admin123 (bcrypt 해시 Update)
 INSERT INTO users (username, password, role, display_name, job_title, is_active) VALUES 
-  ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin', '시스템 관리자', '관리자', 1);
+  ('admin', '$2b$10$XbHk6SDpgZOzH5/plJq1/.bmqcbXbFuaOuuxUPSntLuGeb1f88ttO', 'admin', '시스템 관리자', '관리자', 1);
+
+-- ============================================
+-- 2026년 2월 추가 샘플 데이터 (30건)
+-- 기간: 2026-02-02 ~ 2026-02-10
+-- 분포: Done(9), Review(3), In-Progress(12), To-Do(6)
+-- ============================================
+INSERT INTO tickets (
+  title, description, status, dbms_type, work_category, severity, 
+  instance_host, instance_env, instance_version, sla_minutes, 
+  assigned_to, priority, started_at, resolved_at
+) VALUES
+  -- DONE (9건) - 2월 2일 ~ 6일 완료
+  (
+    'User Table Alter Lock Issue', '프로덕션 DB 유저 테이블 컬럼 추가 중 메타데이터 락 대기 발생. 트랜잭션 수동 킬 조치.',
+    'done', 'MySQL', '장애대응', 'critical', '10.20.30.101', 'prod', 'MySQL 8.0.35', 60, 10, 1, 
+    datetime('now', '-8 days'), datetime('now', '-8 days', '+2 hours')
+  ),
+  (
+    'Session Store Memory Spike', 'Redis 세션 스토어 메모리 사용량 급증(85%). 임시로 maxmemory-policy 변경 및 모니터링.',
+    'done', 'Redis', '장애대응', 'high', '10.20.30.52', 'prod', 'Redis 7.0.12', 120, 14, 2,
+    datetime('now', '-7 days'), datetime('now', '-7 days', '+4 hours')
+  ),
+  (
+    'Vacuum Failure on Order DB', '주문 DB 자동 Vacuum 실패 알람. 트랜잭션 ID 랩어라운드 방지를 위해 수동 Vacuum Full 수행.',
+    'done', 'PostgreSQL', '정기점검', 'medium', '10.20.30.202', 'prod', 'PostgreSQL 14.9', NULL, 1, 3,
+    datetime('now', '-7 days'), datetime('now', '-7 days', '+5 hours')
+  ),
+  (
+    'Oplog Size Adjustment', 'MongoDB Oplog 윈도우가 3시간으로 감소. Oplog 사이즈 50GB로 증설 작업.',
+    'done', 'MongoDB', '성능튜닝', 'low', '10.20.30.231', 'stg', 'MongoDB 6.0', NULL, 5, 4,
+    datetime('now', '-6 days'), datetime('now', '-6 days', '+1 hour')
+  ),
+  (
+    'Slave Lag Check', '새벽 배치 작업 중 Slave Lag 10초 발생 확인. 배치 쿼리 튜닝 가이드 전달.',
+    'done', 'MariaDB', '기술지원', 'low', '10.20.30.151', 'prod', 'MariaDB 10.6', NULL, 13, 4,
+    datetime('now', '-6 days'), datetime('now', '-6 days', '+30 minutes')
+  ),
+  (
+    'License Key Update', 'EDB PAS 라이선스 만료 30일 전 알림. 신규 라이선스 키 발급 및 적용.',
+    'done', 'EDB', '유지보수', 'high', '10.20.30.221', 'prod', 'EDB 15', NULL, 3, 2,
+    datetime('now', '-5 days'), datetime('now', '-5 days', '+10 minutes')
+  ),
+  (
+    'Pipeline Ingestion Delay', 'SingleStore 파이프라인 데이터 적재 지연. 카프카 파티션 불균형 확인 및 리밸런싱.',
+    'done', 'SingleStore', '성능튜닝', 'medium', '10.20.30.252', 'prod', 'SingleStore 8.1', 180, 8, 3,
+    datetime('now', '-5 days'), datetime('now', '-5 days', '+3 hours')
+  ),
+  (
+    'Cluster Resize', 'HeatWave 노드 2개 추가 증설 작업. 쿼리 오프로드 성능 30% 향상 목표.',
+    'done', 'HeatWave', '아키텍처설계', 'medium', '10.20.30.301', 'prod', 'HeatWave 8.0', NULL, 16, 3,
+    datetime('now', '-4 days'), datetime('now', '-4 days', '+6 hours')
+  ),
+  (
+    'Role Permission Audit', 'DB 접근 권한 전수 조사 및 퇴사자 계정 삭제 처리.',
+    'done', 'PostgreSQL', '보안점검', 'low', '10.20.30.203', 'prod', 'PostgreSQL 15', NULL, 2, 4,
+    datetime('now', '-4 days'), datetime('now', '-4 days', '+4 hours')
+  ),
+
+  -- REVIEW (3건) - 2월 9일 ~ 10일
+  (
+    'Slow Query Indexing - Auth', '인증 서비스 로그인 쿼리 느림 현상. Users 테이블 email 컬럼 복합 인덱스 추가 검토 요청.',
+    'review', 'MySQL', '성능튜닝', 'high', '10.20.30.102', 'prod', 'MySQL 8.0', 120, 11, 2,
+    datetime('now', '-1 day'), NULL
+  ),
+  (
+    'Cache Eviction Policy Change', 'Redis 캐시 정책 allkeys-lru에서 volatile-lru로 변경 제안 검토.',
+    'review', 'Redis', '아키텍처설계', 'medium', '10.20.30.53', 'dev', 'Redis 7.0', NULL, 15, 3,
+    datetime('now', '-20 hours'), NULL
+  ),
+  (
+    'Collection Sharding migration', '대용량 로그 컬렉션 샤딩 키 변경(Hashed -> Range) 마이그레이션 계획서 리뷰.',
+    'review', 'MongoDB', '아키텍처설계', 'critical', '10.20.30.232', 'prod', 'MongoDB 7.0', NULL, 7, 1,
+    datetime('now', '-2 hours'), NULL
+  ),
+
+  -- IN_PROGRESS (12건) - 2월 8일 ~ 10일
+  (
+    'Binlog Retention Policy Change', '디스크 공간 확보를 위해 Binlog 보관 주기 7일에서 3일로 단축 적용 중.',
+    'in_progress', 'MySQL', '유지보수', 'low', '10.20.30.103', 'prod', 'MySQL 8.0', NULL, 18, 4,
+    datetime('now', '-2 days'), NULL
+  ),
+  (
+    'PostGIS Extension Upgrade', 'GIS 서비스 고도화를 위해 PostGIS 3.3 -> 3.4 업그레이드 작업 진행 중.',
+    'in_progress', 'PostgreSQL', '패치업그레이드', 'medium', '10.20.30.204', 'dev', 'PostgreSQL 16', NULL, 6, 3,
+    datetime('now', '-2 days'), NULL
+  ),
+  (
+    'Galera Cluster Node Sync', 'Galera Cluster Node 3번 재기동 후 SST 동기화 지연 현상 분석 중.',
+    'in_progress', 'MariaDB', '장애대응', 'high', '10.20.30.152', 'prod', 'MariaDB 10.11', 60, 17, 2,
+    datetime('now', '-1 day'), NULL
+  ),
+  (
+    'Sentinel Config Drift', 'Sentinel 설정 파일과 런타임 설정 불일치 확인. 설정 파일 동기화 작업.',
+    'in_progress', 'Redis', '유지보수', 'medium', '10.20.30.54', 'prod', 'Redis 7.0', NULL, 14, 3,
+    datetime('now', '-1 day'), NULL
+  ),
+  (
+    'PL/SQL Function Debugging', '금융 정산 프로시저 오류 디버깅 지원 요청. 변수 타입 불일치 확인 중.',
+    'in_progress', 'EDB', '기술지원', 'high', '10.20.30.222', 'dev', 'EDB 15', 120, 4, 2,
+    datetime('now', '-1 day'), NULL
+  ),
+  (
+    'Aggregator Node High CPU', 'SingleStore Aggregator 노드 CPU 95% 지속. 쿼리 플랜 캐시 초기화 검토 중.',
+    'in_progress', 'SingleStore', '장애대응', 'critical', '10.20.30.253', 'prod', 'SingleStore 8.1', 30, 9, 1,
+    datetime('now', '-5 hours'), NULL
+  ),
+  (
+    'Analytics Engine Error 3022', 'HeatWave Analytics 엔진 에러 로그 분석. 오라클 SR 오픈 예정.',
+    'in_progress', 'HeatWave', '장애대응', 'high', '10.20.30.302', 'prod', 'HeatWave 8.0', 120, 16, 2,
+    datetime('now', '-4 hours'), NULL
+  ),
+  (
+    'Hidden Node Configuration', '백업 전용 Hidden Node 구성 작업. 복제 지연 없이 백업 수행 목적.',
+    'in_progress', 'MongoDB', '아키텍처설계', 'low', '10.20.30.233', 'prod', 'MongoDB 6.0', NULL, 5, 4,
+    datetime('now', '-3 hours'), NULL
+  ),
+  (
+    'Connection Storm Mitigation', '이벤트 시작 후 DB 커넥션 5000개 급증. Max Connection 조정 및 쓰로틀링 적용 중.',
+    'in_progress', 'MySQL', '장애대응', 'critical', '10.20.30.104', 'prod', 'MySQL 8.0', 10, 10, 1,
+    datetime('now', '-1 hour'), NULL
+  ),
+  (
+    'Sequence Wrap-around preventative', '메인 테이블 PK Sequence MAX 값 90% 도달. BIGINT 변경 작업 계획 수립 중.',
+    'in_progress', 'PostgreSQL', '유지보수', 'medium', '10.20.30.205', 'prod', 'PostgreSQL 14', NULL, 2, 3,
+    datetime('now', '-30 minutes'), NULL
+  ),
+  (
+    'Lua Script Optimization', 'Redis Lua 스크립트 실행 시간 500ms 초과. 로직 최적화 가이드 작성.',
+    'in_progress', 'Redis', '성능튜닝', 'medium', '10.20.30.55', 'dev', 'Redis 7.0', NULL, 15, 3,
+    datetime('now', '-10 minutes'), NULL
+  ),
+  (
+    'Audit Plugin Install', '보안 감사 요건 충족을 위해 MariaDB Audit Plugin 설치 및 테스트.',
+    'in_progress', 'MariaDB', '보안점검', 'low', '10.20.30.153', 'stg', 'MariaDB 10.6', NULL, 13, 4,
+    datetime('now', '-5 minutes'), NULL
+  ),
+
+  -- TO_DO (6건) - 2월 10일
+  (
+    'Q1 Security Patch Planning', '1분기 정기 보안 패치 일정 수립 및 대상 서버 목록 현행화.',
+    'todo', 'MySQL', '패치업그레이드', 'high', NULL, 'all', NULL, NULL, 12, 2,
+    NULL, NULL
+  ),
+  (
+    'New Schema Design Review', '신규 정산 시스템 DB 스키마 모델링 리뷰 요청.',
+    'todo', 'PostgreSQL', '아키텍처설계', 'medium', NULL, 'dev', 'PostgreSQL 16', NULL, 1, 3,
+    NULL, NULL
+  ),
+  (
+    'Backup Verification Drill', '분기별 백업 데이터 복구 모의 훈련 계획.',
+    'todo', 'MongoDB', '정기점검', 'medium', NULL, 'prod', NULL, NULL, 7, 3,
+    NULL, NULL
+  ),
+  (
+    'Key Expiration Audit', 'TTL 설정되지 않은 오래된 키 전수 조사.',
+    'todo', 'Redis', '유지보수', 'low', '10.20.30.56', 'prod', 'Redis 7.0', NULL, 14, 4,
+    NULL, NULL
+  ),
+  (
+    'Migration Assessment for HR DB', '인사 시스템 오라클 -> EDB 전환 타당성 검토.',
+    'todo', 'EDB', '컨설팅', 'high', NULL, 'n/a', NULL, NULL, 3, 2,
+    NULL, NULL
+  ),
+  (
+    'Memory Manager Tuning', 'SingleStore 메모리 사용 효율화를 위한 파라미터 튜닝 테스트.',
+    'todo', 'SingleStore', '성능튜닝', 'medium', '10.20.30.254', 'dev', 'SingleStore 8.1', NULL, 9, 3,
+    NULL, NULL
+  );
