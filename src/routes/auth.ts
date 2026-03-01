@@ -166,32 +166,35 @@ app.post('/login', async (c) => {
         let token: string;
         try {
             const displayName = user.display_name || user.engineer_name || user.username;
-            // 만약 rememberMe가 true면 24시간, false면 4시간(세션 길이에 맞춰) 등으로 설정 가능하나
-            // 토큰 자체의 유효기간과 쿠키의 수명은 별개로 관리하는 것이 좋음.
-            // 여기서는 토큰 유효기간을 24시간으로 통일하되, 쿠키만 삭제되면 접근 불가.
+            // rememberMe=true: 7일 JWT + 7일 persistent cookie
+            // rememberMe=false: 4시간 JWT + session cookie (브라우저 종료 시 삭제)
+            const expSeconds = rememberMe
+                ? 60 * 60 * 24 * 7   // 7 days
+                : 60 * 60 * 4        // 4 hours
             token = await sign({
                 sub: user.username,
                 role: user.role || 'user',
                 name: displayName,
-                exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 // 24 hours
+                exp: Math.floor(Date.now() / 1000) + expSeconds
             }, c.env.JWT_SECRET)
         } catch (e) {
             console.error('JWT signing failed:', e)
             return c.json(errorResponse('Failed to generate authentication token'), 500)
         }
 
-        // 쿠키 옵션 설정
+        // secure: 운영(production)에서만 true, 로컬 개발(HTTP)에서는 false
+        const isProduction = c.env.ENVIRONMENT === 'production'
         const cookieOptions: any = {
             httpOnly: true,
-            secure: true,
+            secure: isProduction,
             sameSite: 'Strict',
             path: '/'
         };
 
-        // rememberMe가 true일 때만 Max-Age 설정 (Persistent Cookie)
-        // false이면 Max-Age 설정 안 함 (Session Cookie - 브라우저 종료 시 삭제)
+        // rememberMe=true: 토큰 만료와 동일한 maxAge 설정 (Persistent Cookie)
+        // rememberMe=false: maxAge 설정 안 함 (Session Cookie)
         if (rememberMe) {
-            cookieOptions.maxAge = 60 * 60 * 24; // 24 hours
+            cookieOptions.maxAge = 60 * 60 * 24 * 7; // 7 days
         }
 
         setCookie(c, 'auth_token', token, cookieOptions)

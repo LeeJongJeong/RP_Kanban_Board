@@ -100,8 +100,23 @@ app.put('/users/:id', async (c) => {
         const body = await c.req.json()
         const { role, is_active, display_name, job_title } = body
 
-        // Note: We don't update engineer link here to keep it simple, 
-        // as the requirement was mainly about creation flow.
+        // 마지막 관리자 역할 강등 또는 비활성화 방지
+        const targetUser = await c.env.DB.prepare(
+            'SELECT role, is_active FROM users WHERE id = ?'
+        ).bind(id).first<{ role: string; is_active: number }>()
+
+        if (targetUser?.role === 'admin') {
+            const isDowngrading = role !== 'admin'
+            const isDeactivating = is_active === 0
+            if (isDowngrading || isDeactivating) {
+                const adminCount = await c.env.DB.prepare(
+                    "SELECT COUNT(*) as cnt FROM users WHERE role = 'admin' AND is_active = 1"
+                ).first<{ cnt: number }>()
+                if ((adminCount?.cnt ?? 0) <= 1) {
+                    return c.json(errorResponse('마지막 관리자의 권한을 변경하거나 비활성화할 수 없습니다'), 400)
+                }
+            }
+        }
 
         await c.env.DB.prepare(`
       UPDATE users
@@ -156,6 +171,20 @@ app.delete('/users/:id', async (c) => {
 
         if (currentUser && currentUser.id.toString() === id) {
             return c.json(errorResponse('Cannot delete your own account'), 400)
+        }
+
+        // 마지막 관리자 삭제 방지
+        const targetUser = await c.env.DB.prepare(
+            'SELECT role FROM users WHERE id = ?'
+        ).bind(id).first<{ role: string }>()
+
+        if (targetUser?.role === 'admin') {
+            const adminCount = await c.env.DB.prepare(
+                "SELECT COUNT(*) as cnt FROM users WHERE role = 'admin' AND is_active = 1"
+            ).first<{ cnt: number }>()
+            if ((adminCount?.cnt ?? 0) <= 1) {
+                return c.json(errorResponse('마지막 관리자는 삭제할 수 없습니다'), 400)
+            }
         }
 
         await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id).run()

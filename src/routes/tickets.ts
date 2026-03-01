@@ -47,7 +47,6 @@ const updateTicketSchema = z.object({
 })
 
 const commentSchema = z.object({
-  engineer_id: z.number(),
   content: z.string().min(1),
   comment_type: z.enum(['note', 'solution', 'workaround', 'reference']).default('note')
 })
@@ -68,7 +67,9 @@ app.get('/', async (c) => {
       dbms_type: c.req.query('dbms_type'),
       week_start_date: c.req.query('week_start_date'),
       start_date: c.req.query('start_date'),
-      end_date: c.req.query('end_date')
+      end_date: c.req.query('end_date'),
+      limit: c.req.query('limit') ? Math.min(Number(c.req.query('limit')), 500) : undefined,
+      offset: c.req.query('offset') ? Number(c.req.query('offset')) : undefined,
     }
 
     const tickets = await service.findAll(filters)
@@ -81,22 +82,24 @@ app.get('/', async (c) => {
 
 // 티켓 상세 조회
 app.get('/:id', async (c) => {
-  const { DB } = c.env
-  const ticketId = c.req.param('id')
-  const service = new TicketService(DB)
+  try {
+    const { DB } = c.env
+    const ticketId = c.req.param('id')
+    const service = new TicketService(DB)
 
-  const ticket = await service.findById(ticketId)
+    const ticket = await service.findById(ticketId)
 
-  if (!ticket) {
-    return c.json({ error: 'Ticket not found' }, 404)
+    if (!ticket) {
+      return c.json({ error: 'Ticket not found' }, 404)
+    }
+
+    const comments = await service.getComments(ticketId)
+
+    return c.json({ ticket, comments })
+  } catch (error: any) {
+    console.error('Error fetching ticket detail:', error)
+    return c.json(errorResponse('Internal Server Error'), 500)
   }
-
-  const comments = await service.getComments(ticketId)
-
-  return c.json({
-    ticket,
-    comments
-  })
 })
 
 // 티켓 생성
@@ -182,8 +185,13 @@ app.patch('/:id/assign', zValidator('json', assignSchema), async (c) => {
   return c.json({ success: true })
 })
 
-// 티켓 수정
+// 티켓 수정 (admin 전용)
 app.put('/:id', zValidator('json', updateTicketSchema), async (c) => {
+  const payload = c.get('jwtPayload') as any
+  if (payload?.role !== 'admin') {
+    return c.json(errorResponse('Forbidden: Admin access required'), 403)
+  }
+
   const { DB } = c.env
   const ticketId = c.req.param('id')
   const body = c.req.valid('json')
@@ -198,8 +206,13 @@ app.put('/:id', zValidator('json', updateTicketSchema), async (c) => {
   return c.json({ success: true })
 })
 
-// 티켓 삭제
+// 티켓 삭제 (admin 전용)
 app.delete('/:id', async (c) => {
+  const payload = c.get('jwtPayload') as any
+  if (payload?.role !== 'admin') {
+    return c.json(errorResponse('Forbidden: Admin access required'), 403)
+  }
+
   const { DB } = c.env
   const ticketId = c.req.param('id')
   const service = new TicketService(DB)
@@ -209,14 +222,19 @@ app.delete('/:id', async (c) => {
   return c.json({ success: true })
 })
 
-// 코멘트 추가
+// 코멘트 추가 (engineer_id는 JWT에서 서버사이드 조회)
 app.post('/:id/comments', zValidator('json', commentSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
-  const { engineer_id, content, comment_type } = c.req.valid('json')
+  const { content, comment_type } = c.req.valid('json')
   const service = new TicketService(DB)
 
-  const comment_id = await service.addComment(ticketId, engineer_id, content, comment_type)
+  const engineerId = await getChangedBy(c)
+  if (!engineerId) {
+    return c.json(errorResponse('댓글 작성 권한이 없습니다. 엔지니어 계정과 연동이 필요합니다.'), 403)
+  }
+
+  const comment_id = await service.addComment(ticketId, engineerId, content, comment_type)
 
   return c.json({
     success: true,

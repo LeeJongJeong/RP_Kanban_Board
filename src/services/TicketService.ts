@@ -39,6 +39,8 @@ export interface TicketFilters {
   week_start_date?: string;
   start_date?: string;
   end_date?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export class TicketService {
@@ -82,6 +84,11 @@ export class TicketService {
     }
 
     query += ` ORDER BY t.priority ASC, t.created_at DESC`
+
+    const limit = Math.min(filters.limit ?? 200, 500)
+    const offset = filters.offset ?? 0
+    query += ` LIMIT ? OFFSET ?`
+    params.push(limit, offset)
 
     const result = await this.db.prepare(query).bind(...params).all<TicketWithEngineer>()
     return result.results || []

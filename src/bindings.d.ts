@@ -5,4 +5,5 @@ export type Bindings = {
   USERNAME: string
   PASSWORD: string
   JWT_SECRET: string
+  ENVIRONMENT?: string
 }

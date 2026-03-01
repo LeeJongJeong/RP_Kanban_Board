@@ -16,12 +16,10 @@ export const Layout = (
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>RP Kanban Board</title>
         <script>
-            window.CURRENT_USER_ENGINEER_ID = ${meta.currentUserEngineerId};
-            window.CURRENT_USER_NAME = "${meta.currentUserEngineerName || ''}";
-            window.CURRENT_USER_ROLE = "${meta.currentUserRole}";
-            window.CURRENT_USER_USERNAME = "${meta.currentUsername}";
-            // Debug info
-            console.log('Current User:', "${meta.currentUsername}", 'Name:', "${meta.currentUserEngineerName}", 'Role:', "${meta.currentUserRole}");
+            window.CURRENT_USER_ENGINEER_ID = ${meta.currentUserEngineerId === null ? 'null' : meta.currentUserEngineerId};
+            window.CURRENT_USER_NAME = ${JSON.stringify(meta.currentUserEngineerName || '')};
+            window.CURRENT_USER_ROLE = ${JSON.stringify(meta.currentUserRole)};
+            window.CURRENT_USER_USERNAME = ${JSON.stringify(meta.currentUsername)};
         </script>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
