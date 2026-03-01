@@ -190,26 +190,38 @@ export class TicketService {
     const exists = await this.db.prepare('SELECT id FROM tickets WHERE id = ?').bind(id).first()
     if (!exists) return false;
 
-    await this.db.prepare(`
-            UPDATE tickets 
-            SET 
-              title = ?,
-              description = ?,
-              severity = ?,
-              priority = ?,
-              instance_host = ?,
-              instance_env = ?,
-              instance_version = ?,
-              sla_minutes = ?,
-              dbms_type = ?,
-              work_category = ?,
-              updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-          `).bind(
-      data.title, data.description, data.severity, data.priority,
-      data.instance_host, data.instance_env, data.instance_version,
-      data.sla_minutes, data.dbms_type, data.work_category, id
-    ).run()
+    // 제공된 필드만 업데이트 (undefined 필드는 건너뜀)
+    const fieldMap: Record<string, unknown> = {
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
+      priority: data.priority,
+      instance_host: data.instance_host,
+      instance_env: data.instance_env,
+      instance_version: data.instance_version,
+      sla_minutes: data.sla_minutes,
+      dbms_type: data.dbms_type,
+      work_category: data.work_category,
+    }
+
+    const setClauses: string[] = []
+    const params: unknown[] = []
+    for (const [col, val] of Object.entries(fieldMap)) {
+      if (val !== undefined) {
+        setClauses.push(`${col} = ?`)
+        params.push(val)
+      }
+    }
+
+    if (setClauses.length === 0) return true; // 변경할 필드 없음
+
+    setClauses.push('updated_at = CURRENT_TIMESTAMP')
+    params.push(id)
+
+    await this.db.prepare(
+      `UPDATE tickets SET ${setClauses.join(', ')} WHERE id = ?`
+    ).bind(...params).run()
+
     return true;
   }
 
