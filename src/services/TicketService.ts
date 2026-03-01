@@ -136,11 +136,11 @@ export class TicketService {
     const updates: string[] = ['status = ?']
     const params: any[] = [status]
 
-    if (status.toLowerCase() === 'in progress' && !currentTicket.started_at) {
+    if (status === 'in_progress' && !currentTicket.started_at) {
       updates.push('started_at = CURRENT_TIMESTAMP')
     }
 
-    if (status.toLowerCase() === 'done') {
+    if (status === 'done') {
       updates.push('resolved_at = CURRENT_TIMESTAMP')
     } else {
       updates.push('resolved_at = NULL')
@@ -155,7 +155,9 @@ export class TicketService {
         WHERE id = ?
       `).bind(...params).run()
 
-    await this.logHistory(Number(id), changedBy, 'status', currentTicket.status, status);
+    if (changedBy > 0) {
+      try { await this.logHistory(Number(id), changedBy, 'status', currentTicket.status, status) } catch { /* non-fatal */ }
+    }
     return true;
   }
 
@@ -164,22 +166,22 @@ export class TicketService {
     if (!currentTicket) return false;
 
     await this.db.prepare(`
-        UPDATE tickets 
+        UPDATE tickets
         SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(assignedTo, id).run()
 
-    // Handle null <-> number conversion for string logging
-    const oldVal = currentTicket.assigned_to?.toString() || 'null';
-    const newVal = assignedTo?.toString() || 'null';
-
-    await this.logHistory(Number(id), changedBy, 'assigned_to', oldVal, newVal);
+    if (changedBy > 0) {
+      const oldVal = currentTicket.assigned_to?.toString() || 'null';
+      const newVal = assignedTo?.toString() || 'null';
+      try { await this.logHistory(Number(id), changedBy, 'assigned_to', oldVal, newVal) } catch { /* non-fatal */ }
+    }
     return true;
   }
 
   async update(id: number | string, data: UpdateTicketParams): Promise<boolean> {
-    // This assumes the caller has already validated existence if needed, or we rely on SQL result
-    // But for update consistency, we just run the update.
+    const exists = await this.db.prepare('SELECT id FROM tickets WHERE id = ?').bind(id).first()
+    if (!exists) return false;
 
     await this.db.prepare(`
             UPDATE tickets 

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
 import { Bindings } from '../bindings'
 import { TicketService } from '../services/TicketService'
+import { errorResponse } from '../types/api'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -26,12 +27,23 @@ const createTicketSchema = z.object({
 
 const updateStatusSchema = z.object({
   status: z.enum(['todo', 'in_progress', 'review', 'done']),
-  changed_by: z.number()
 })
 
 const assignSchema = z.object({
   assigned_to: z.number().nullable(),
-  changed_by: z.number()
+})
+
+const updateTicketSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional().nullable(),
+  severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+  priority: z.number().min(1).max(4).optional(),
+  instance_host: z.string().optional().nullable(),
+  instance_env: z.enum(['prod', 'stg', 'dev']).optional().nullable(),
+  instance_version: z.string().optional().nullable(),
+  sla_minutes: z.number().optional().nullable(),
+  dbms_type: z.enum(['MySQL', 'PostgreSQL', 'MariaDB', 'MongoDB', 'Redis', 'SingleStore', 'HeatWave', 'EDB']).optional(),
+  work_category: z.enum(['장애대응', '성능튜닝', '아키텍처설계', '정기점검', '패치업그레이드', '패치/업그레이드', '기술 미팅', '마이그레이션', 'Documentation']).optional(),
 })
 
 const commentSchema = z.object({
@@ -63,7 +75,7 @@ app.get('/', async (c) => {
     return c.json({ tickets })
   } catch (error: any) {
     console.error('Error fetching tickets:', error)
-    return c.json({ error: 'Internal Server Error' }, 500)
+    return c.json(errorResponse('Internal Server Error'), 500)
   }
 })
 
@@ -122,14 +134,29 @@ app.post('/', zValidator('json', createTicketSchema), async (c) => {
   }, 201)
 })
 
+// JWT에서 engineer_id 조회 헬퍼
+async function getChangedBy(c: any): Promise<number> {
+  try {
+    const payload = c.get('jwtPayload') as any
+    if (!payload?.sub) return 0
+    const user = await c.env.DB.prepare('SELECT engineer_id FROM users WHERE username = ?')
+      .bind(payload.sub)
+      .first<{ engineer_id: number | null }>()
+    return user?.engineer_id || 0
+  } catch {
+    return 0
+  }
+}
+
 // 티켓 상태 변경
 app.patch('/:id/status', zValidator('json', updateStatusSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
-  const { status, changed_by } = c.req.valid('json')
+  const { status } = c.req.valid('json')
   const service = new TicketService(DB)
+  const changedBy = await getChangedBy(c)
 
-  const success = await service.updateStatus(ticketId, status, changed_by)
+  const success = await service.updateStatus(ticketId, status, changedBy)
 
   if (!success) {
     return c.json({ error: 'Ticket not found' }, 404)
@@ -142,10 +169,11 @@ app.patch('/:id/status', zValidator('json', updateStatusSchema), async (c) => {
 app.patch('/:id/assign', zValidator('json', assignSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
-  const { assigned_to, changed_by } = c.req.valid('json')
+  const { assigned_to } = c.req.valid('json')
   const service = new TicketService(DB)
+  const changedBy = await getChangedBy(c)
 
-  const success = await service.assign(ticketId, assigned_to, changed_by)
+  const success = await service.assign(ticketId, assigned_to, changedBy)
 
   if (!success) {
     return c.json({ error: 'Ticket not found' }, 404)
@@ -155,13 +183,17 @@ app.patch('/:id/assign', zValidator('json', assignSchema), async (c) => {
 })
 
 // 티켓 수정
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', updateTicketSchema), async (c) => {
   const { DB } = c.env
   const ticketId = c.req.param('id')
-  const body = await c.req.json()
+  const body = c.req.valid('json')
   const service = new TicketService(DB)
 
-  await service.update(ticketId, body)
+  const success = await service.update(ticketId, body)
+
+  if (!success) {
+    return c.json({ error: 'Ticket not found' }, 404)
+  }
 
   return c.json({ success: true })
 })

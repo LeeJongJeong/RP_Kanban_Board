@@ -1,7 +1,7 @@
 import API from './api.js';
 import { store } from './store.js';
 import { renderKanbanBoard } from './render.js';
-import { showNotification, formatDate, getYearWeek, STATUS_LABELS, DBMS_ICONS, getCurrentWeek, formatDateTime } from './utils.js';
+import { showNotification, formatDate, getYearWeek, STATUS_LABELS, DBMS_ICONS, getCurrentWeek, formatDateTime, escapeHtml } from './utils.js';
 
 // ==================== Data Loading ====================
 export async function loadEngineers() {
@@ -106,7 +106,7 @@ export async function handleDrop(event, newStatus) {
   }
 
   try {
-    await API.updateTicketStatus(store.draggedTicket.id, newStatus, 1); // TODO: User ID
+    await API.updateTicketStatus(store.draggedTicket.id, newStatus);
     showNotification('티켓 상태가 변경되었습니다.', 'success');
     await loadTickets();
   } catch (error) {
@@ -127,7 +127,7 @@ export async function handleEngineerDrop(event, engineerId) {
   }
 
   try {
-    await API.assignTicket(store.draggedTicket.id, engineerId, 1);
+    await API.assignTicket(store.draggedTicket.id, engineerId);
     showNotification('담당자가 변경되었습니다.', 'success');
     await loadTickets();
   } catch (error) {
@@ -289,10 +289,7 @@ export async function openTicketDetail(ticketId) {
       }
 
       try {
-        // Need 'changed_by' - for now hardcode or get from store/auth if available. 
-        // Since we don't have auth context fully wired in this snippet, using a placeholder ID or 1.
-        const changedBy = 1; // Default admin/user 
-        await API.updateTicketStatus(ticketId, newStatus, changedBy);
+        await API.updateTicketStatus(ticketId, newStatus);
 
         showNotification('상태가 변경되었습니다.', 'success');
 
@@ -326,7 +323,7 @@ export async function openTicketDetail(ticketId) {
            </div>
            <div class="col-span-1">
               <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">담당자</label>
-              <div class="font-medium">${ticket.assigned_to_name || '미할당'}</div>
+              <div class="font-medium">${escapeHtml(ticket.assigned_to_name) || '미할당'}</div>
            </div>
            <div class="col-span-1">
               <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">DBMS</label>
@@ -351,9 +348,9 @@ export async function openTicketDetail(ticketId) {
         <div>
            <h3 class="text-sm font-bold text-gray-700 mb-2">인스턴스 정보</h3>
            <div class="bg-gray-50 p-3 rounded text-sm grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <p><span class="text-gray-500">호스트:</span> ${ticket.instance_host}</p>
-              <p><span class="text-gray-500">환경:</span> ${ticket.instance_env}</p>
-              ${ticket.instance_version ? `<p><span class="text-gray-500">버전:</span> ${ticket.instance_version}</p>` : ''}
+              <p><span class="text-gray-500">호스트:</span> ${escapeHtml(ticket.instance_host)}</p>
+              <p><span class="text-gray-500">환경:</span> ${escapeHtml(ticket.instance_env)}</p>
+              ${ticket.instance_version ? `<p><span class="text-gray-500">버전:</span> ${escapeHtml(ticket.instance_version)}</p>` : ''}
            </div>
         </div>` : ''}
 
@@ -374,7 +371,7 @@ export async function openTicketDetail(ticketId) {
         <!-- 3. Description (Bottom) -->
         <div>
            <h3 class="text-sm font-bold text-gray-700 mb-2">설명</h3>
-           <div class="bg-gray-50 p-4 rounded-lg text-gray-700 whitespace-pre-wrap min-h-[80px] text-sm">${ticket.description || '내용 없음'}</div>
+           <div class="bg-gray-50 p-4 rounded-lg text-gray-700 whitespace-pre-wrap min-h-[80px] text-sm">${escapeHtml(ticket.description) || '내용 없음'}</div>
         </div>
 
         <!-- 4. Dates (Bottom) -->
@@ -399,7 +396,7 @@ export async function openTicketDetail(ticketId) {
                     <span class="font-semibold text-sm text-blue-900">${comment.engineer_name}</span>
                     <span class="text-xs text-blue-500">${formatDateTime(comment.created_at)}</span>
                  </div>
-                 <p class="text-sm text-gray-800 whitespace-pre-wrap">${comment.content}</p>
+                 <p class="text-sm text-gray-800 whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
                  <span class="text-xs text-blue-400 mt-2 inline-block px-1.5 py-0.5 bg-white rounded border border-blue-200">${comment.comment_type}</span>
                </div>
              `).join('') : '<p class="text-gray-500 text-sm italic py-2">등록된 코멘트가 없습니다.</p>'}

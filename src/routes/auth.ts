@@ -37,7 +37,7 @@ app.put('/password', async (c) => {
 
         let user: any;
         try {
-            user = await c.env.DB.prepare('SELECT * FROM users WHERE username = ?')
+            user = await c.env.DB.prepare('SELECT id, username, password, is_active FROM users WHERE username = ?')
                 .bind(username)
                 .first()
         } catch (e) {
@@ -90,7 +90,7 @@ app.post('/register', async (c) => {
         // Check if user exists
         let existingUser;
         try {
-            existingUser = await c.env.DB.prepare('SELECT * FROM users WHERE username = ?')
+            existingUser = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?')
                 .bind(username)
                 .first()
         } catch (e) {
@@ -134,9 +134,10 @@ app.post('/login', async (c) => {
         let user: any;
         try {
             user = await c.env.DB.prepare(`
-                SELECT u.*, e.name as engineer_name 
-                FROM users u 
-                LEFT JOIN engineers e ON u.engineer_id = e.id 
+                SELECT u.id, u.username, u.password, u.role, u.is_active, u.display_name, u.engineer_id,
+                       e.name as engineer_name
+                FROM users u
+                LEFT JOIN engineers e ON u.engineer_id = e.id
                 WHERE u.username = ?
             `)
                 .bind(username)

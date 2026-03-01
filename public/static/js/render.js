@@ -1,5 +1,5 @@
 import { store } from './store.js';
-import { STATUS_LABELS, SEVERITY_COLORS, DBMS_ICONS, getSLAStatus } from './utils.js';
+import { STATUS_LABELS, SEVERITY_COLORS, DBMS_ICONS, getSLAStatus, escapeHtml } from './utils.js';
 
 export function renderKanbanBoard() {
   const board = document.getElementById('kanbanBoard');
@@ -58,10 +58,17 @@ function renderStatusView(board) {
 }
 
 function renderEngineerView(board) {
+  const ticketsByEngineer = new Map();
+  store.allTickets.forEach(t => {
+    if (t.status === 'done') return;
+    if (!ticketsByEngineer.has(t.assigned_to)) ticketsByEngineer.set(t.assigned_to, []);
+    ticketsByEngineer.get(t.assigned_to).push(t);
+  });
+
   board.innerHTML = `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
       ${store.allEngineers.map(engineer => {
-    const tickets = store.allTickets.filter(t => t.assigned_to === engineer.id && t.status !== 'done');
+    const tickets = ticketsByEngineer.get(engineer.id) || [];
     const wipPercentage = engineer.wip_limit > 0 ? (tickets.length / engineer.wip_limit * 100).toFixed(0) : 0;
     const wipColor = wipPercentage >= 100 ? 'text-red-600' : wipPercentage >= 80 ? 'text-orange-600' : 'text-green-600';
 
@@ -72,8 +79,8 @@ function renderEngineerView(board) {
                ondragover="handleDragOver(event)"
                ondragleave="handleDragLeave(event)">
             <div class="mb-3 sm:mb-4">
-              <h3 class="font-bold text-base sm:text-lg text-gray-700">${engineer.name}</h3>
-              <p class="text-xs sm:text-sm text-gray-500">${engineer.role}</p>
+              <h3 class="font-bold text-base sm:text-lg text-gray-700">${escapeHtml(engineer.name)}</h3>
+              <p class="text-xs sm:text-sm text-gray-500">${escapeHtml(engineer.role)}</p>
               <div class="mt-2 flex items-center space-x-2">
                 <span class="${wipColor} font-semibold text-sm">${tickets.length} / ${engineer.wip_limit}</span>
                 <div class="flex-1 bg-gray-200 rounded-full h-2">
@@ -150,17 +157,17 @@ function renderTicketCard(ticket) {
         </span>
       </div>
       
-      <h4 class="font-semibold text-sm sm:text-base text-gray-800 mb-2 line-clamp-2">${ticket.title}</h4>
-      
+      <h4 class="font-semibold text-sm sm:text-base text-gray-800 mb-2 line-clamp-2">${escapeHtml(ticket.title)}</h4>
+
       <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">
         <i class="fas fa-tag"></i>
-        <span class="truncate">${ticket.work_category}</span>
+        <span class="truncate">${escapeHtml(ticket.work_category)}</span>
       </div>
-      
+
       ${ticket.instance_host ? `
         <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-600 mb-1 sm:mb-2">
           <i class="fas fa-server"></i>
-          <span class="truncate">${ticket.instance_host} (${ticket.instance_env})</span>
+          <span class="truncate">${escapeHtml(ticket.instance_host)} (${escapeHtml(ticket.instance_env)})</span>
         </div>
       ` : ''}
       
@@ -174,7 +181,7 @@ function renderTicketCard(ticket) {
       ${ticket.assigned_to_name ? `
         <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-600 mt-2 sm:mt-3 pt-2 border-t">
           <i class="fas fa-user"></i>
-          <span class="truncate">${ticket.assigned_to_name}</span>
+          <span class="truncate">${escapeHtml(ticket.assigned_to_name)}</span>
         </div>
       ` : `
         <div class="flex items-center space-x-1 sm:space-x-2 text-[10px] sm:text-xs text-gray-400 mt-2 sm:mt-3 pt-2 border-t">
