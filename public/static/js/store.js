@@ -5,6 +5,8 @@ export const store = {
     draggedTicket: null,
     currentWeekStart: null,
     currentWeekEnd: null,
+    startDate: null,
+    endDate: null,
 
     setTickets(tickets) {
         this.allTickets = tickets;

@@ -96,25 +96,7 @@ export const Layout = (
                     return;
                 }
                 
-                // Extract username from JWT
-                var getCookie = function(name) {
-                    var value = '; ' + document.cookie;
-                    var parts = value.split('; ' + name + '=');
-                    if (parts.length === 2) return parts.pop().split(';').shift();
-                };
-                
-                var token = getCookie('auth_token');
-                var username = '-';
-                
-                if (token) {
-                    try {
-                        // Decode JWT payload (middle part)
-                        var payload = JSON.parse(atob(token.split('.')[1]));
-                        username = payload.sub || '-';
-                    } catch (e) {
-                        console.error('Failed to decode JWT:', e);
-                    }
-                }
+                var username = window.CURRENT_USER_USERNAME || '-';
                 
                 // Populate info
                 var userNameEl = document.getElementById('modalUserName');

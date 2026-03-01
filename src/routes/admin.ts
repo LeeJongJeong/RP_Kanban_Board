@@ -147,9 +147,12 @@ app.delete('/users/:id', async (c) => {
 
         // Prevent deleting yourself
         const token = c.get('user')
+        if (!token?.sub) {
+            return c.json(errorResponse('Unauthorized'), 401)
+        }
         const currentUser = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?')
             .bind(token.sub)
-            .first() as any
+            .first<{ id: number }>()
 
         if (currentUser && currentUser.id.toString() === id) {
             return c.json(errorResponse('Cannot delete your own account'), 400)

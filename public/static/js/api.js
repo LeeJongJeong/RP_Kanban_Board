@@ -30,18 +30,14 @@ const API = {
         return response.data;
     },
 
-    updateTicketStatus: async (id, status, changedBy) => {
-        const response = await axios.patch(`/api/tickets/${id}/status`, {
-            status,
-            changed_by: changedBy
-        });
+    updateTicketStatus: async (id, status) => {
+        const response = await axios.patch(`/api/tickets/${id}/status`, { status });
         return response.data;
     },
 
-    assignTicket: async (id, assignedTo, changedBy) => {
+    assignTicket: async (id, assignedTo) => {
         const response = await axios.patch(`/api/tickets/${id}/assign`, {
             assigned_to: assignedTo,
-            changed_by: changedBy
         });
         return response.data;
     },

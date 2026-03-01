@@ -64,6 +64,16 @@ export function getYearWeek(date) {
     return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
+export function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 export function showNotification(message, type = 'success') {
     // Simple toast notification implementation
     const toast = document.createElement('div');
