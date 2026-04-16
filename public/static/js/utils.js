@@ -23,6 +23,13 @@ export const STATUS_LABELS = {
     'done': 'Done'
 };
 
+export const STATUS_COLORS = {
+    'todo': 'status-todo',
+    'in_progress': 'status-in_progress',
+    'review': 'status-review',
+    'done': 'status-done'
+};
+
 export function getCurrentWeek() {
     const now = new Date();
     const day = now.getDay();

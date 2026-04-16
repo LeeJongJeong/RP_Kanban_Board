@@ -72,6 +72,12 @@ export const Layout = (
           .sla-safe { color: #10b981; }
           .sla-warning { color: #f97316; }
           .sla-danger { color: #dc2626; }
+          
+          /* 상태별 티켓 색상 */
+          .status-todo { background-color: #f9fafb; border-left: 4px solid #9ca3af !important; }
+          .status-in_progress { background-color: #eff6ff; border-left: 4px solid #3b82f6 !important; }
+          .status-review { background-color: #faf5ff; border-left: 4px solid #a855f7 !important; }
+          .status-done { background-color: #f0fdf4; border-left: 4px solid #22c55e !important; }
         </style>
     </head>
     <body class="bg-gray-50">

@@ -1,5 +1,5 @@
 import { store } from './store.js';
-import { STATUS_LABELS, SEVERITY_COLORS, DBMS_ICONS, getSLAStatus, escapeHtml } from './utils.js';
+import { STATUS_LABELS, SEVERITY_COLORS, DBMS_ICONS, getSLAStatus, escapeHtml, STATUS_COLORS } from './utils.js';
 
 export function renderKanbanBoard() {
   const board = document.getElementById('kanbanBoard');
@@ -132,9 +132,10 @@ function renderDBMSView(board) {
 function renderTicketCard(ticket) {
   const severityClass = SEVERITY_COLORS[ticket.severity] || 'severity-medium';
   const slaStatus = getSLAStatus(ticket);
+  const statusColorClass = STATUS_COLORS[ticket.status] || 'bg-white border-l-4 border-l-gray-200';
 
   return `
-    <div class="ticket-card bg-white border rounded-lg p-2 sm:p-3 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
+    <div class="ticket-card ${statusColorClass} border rounded-lg p-2 sm:p-3 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
          draggable="true"
          data-ticket-id="${ticket.id}"
          ondragstart="handleDragStart(event, ${ticket.id})"
